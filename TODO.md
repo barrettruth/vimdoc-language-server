@@ -1,4 +1,4 @@
-# vimfmt roadmap
+# vimdoc-language-server roadmap
 
 ## Phase 1 — Parser
 

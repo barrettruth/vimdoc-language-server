@@ -1,3 +1,3 @@
-# vimfmt
+# vimdoc-language-server
 
-formatter for vim `help` files
+Language server for vim `help` files
