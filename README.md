@@ -1,9 +1,8 @@
 # vimdoc-language-server
 
-> **⚠️ Experimental — not ready for use.**
-> Everything is incomplete. The parser is naive, diagnostics are minimal,
-> and the formatter will mangle files. Do not use this on anything you
-> care about.
+> **⚠️ Experimental — not ready for use.** Everything is incomplete. The parser
+> is naive, diagnostics are minimal, and the formatter will mangle files. Do not
+> use this on anything you care about.
 
 Language server for vim help files.
 
@@ -11,7 +10,8 @@ Language server for vim help files.
 
 Pre-alpha. The following capabilities exist in skeletal form:
 
-- `textDocument/formatting` — separator normalization, heading alignment, prose reflow
+- `textDocument/formatting` — separator normalization, heading alignment, prose
+  reflow
 - `textDocument/publishDiagnostics` — duplicate tag definitions
 - `textDocument/documentSymbol` — tag definitions
 - `textDocument/definition` — same-file tag links
