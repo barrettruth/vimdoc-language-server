@@ -21,6 +21,7 @@
             toolchain
             pkgs.cargo-edit
             pkgs.cargo-watch
+            pkgs.prettier
           ];
         };
       }
