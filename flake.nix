@@ -16,6 +16,13 @@
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       in
       {
+        packages.default = pkgs.rustPlatform.buildRustPackage {
+          pname = "vimdoc-language-server";
+          version = "0.1.0";
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+        };
+
         devShells.default = pkgs.mkShell {
           buildInputs = [
             toolchain

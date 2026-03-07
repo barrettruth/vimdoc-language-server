@@ -15,14 +15,14 @@ body:
     attributes:
       label: Version
       description: Output of `vimdoc-language-server --version`
-      placeholder: "vimdoc-language-server 0.1.0"
+      placeholder: 'vimdoc-language-server 0.1.0'
     validations:
       required: true
 
   - type: input
     attributes:
       label: Operating System
-      placeholder: "macOS 15.0 / Ubuntu 24.04"
+      placeholder: 'macOS 15.0 / Ubuntu 24.04'
     validations:
       required: true
 
@@ -30,7 +30,7 @@ body:
     attributes:
       label: LSP Client
       description: Editor and LSP client plugin used
-      placeholder: "Neovim 0.10 + nvim-lspconfig / Helix 24.07"
+      placeholder: 'Neovim 0.10 + nvim-lspconfig / Helix 24.07'
     validations:
       required: true
 
@@ -54,5 +54,6 @@ body:
   - type: textarea
     attributes:
       label: Minimal Reproduction
-      description: Minimal LSP client config or vimdoc snippet that reproduces the issue
+      description:
+        Minimal LSP client config or vimdoc snippet that reproduces the issue
       render: lua
