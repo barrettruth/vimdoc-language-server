@@ -1,0 +1,58 @@
+name: Bug Report
+description: Report a bug in vimdoc-language-server
+labels: [bug]
+body:
+  - type: checkboxes
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I have searched existing issues and this is not a duplicate
+          required: true
+        - label: I have updated to the latest version of vimdoc-language-server
+          required: true
+
+  - type: input
+    attributes:
+      label: Version
+      description: Output of `vimdoc-language-server --version`
+      placeholder: "vimdoc-language-server 0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Operating System
+      placeholder: "macOS 15.0 / Ubuntu 24.04"
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: LSP Client
+      description: Editor and LSP client plugin used
+      placeholder: "Neovim 0.10 + nvim-lspconfig / Helix 24.07"
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Description
+      description: What happened, and what did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Open a vimdoc file with ...
+        2. Trigger ... action
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Minimal Reproduction
+      description: Minimal LSP client config or vimdoc snippet that reproduces the issue
+      render: lua
