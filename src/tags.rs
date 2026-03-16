@@ -52,6 +52,13 @@ impl TagIndex {
         });
     }
 
+    pub fn all_tag_names(&self) -> impl Iterator<Item = &str> {
+        self.workspace
+            .keys()
+            .chain(self.external.keys())
+            .map(String::as_str)
+    }
+
     pub fn resolve(&mut self, name: &str) -> Option<TagEntry> {
         if let Some(entries) = self.workspace.get(name) {
             return entries.first().cloned();

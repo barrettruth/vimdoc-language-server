@@ -4,17 +4,18 @@ use anyhow::{Result, anyhow};
 use clap::{ArgAction, Parser};
 use lsp_server::{Connection, Message, Notification, Response};
 use lsp_types::{
-    DocumentHighlight, DocumentHighlightKind, DocumentLink, DocumentSymbol, DocumentSymbolResponse,
-    FoldingRange, FoldingRangeKind, GotoDefinitionResponse, InitializeParams, Location, OneOf,
-    Position, PublishDiagnosticsParams, Range, ServerCapabilities, SymbolKind,
-    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
+    CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DocumentHighlight,
+    DocumentHighlightKind, DocumentLink, DocumentSymbol, DocumentSymbolResponse, FoldingRange,
+    FoldingRangeKind, GotoDefinitionResponse, InitializeParams, Location, OneOf, Position,
+    PublishDiagnosticsParams, Range, ServerCapabilities, SymbolKind, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextEdit, Uri,
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument,
         Notification as LspNotification, PublishDiagnostics,
     },
     request::{
-        DocumentHighlightRequest, DocumentLinkRequest, DocumentSymbolRequest, FoldingRangeRequest,
-        Formatting, GotoDefinition, Request as LspRequest,
+        Completion, DocumentHighlightRequest, DocumentLinkRequest, DocumentSymbolRequest,
+        FoldingRangeRequest, Formatting, GotoDefinition, Request as LspRequest,
     },
 };
 use serde::Deserialize;
@@ -108,6 +109,10 @@ fn main() -> Result<()> {
         definition_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec!["|".to_string()]),
+            ..CompletionOptions::default()
+        }),
         document_link_provider: Some(lsp_types::DocumentLinkOptions {
             resolve_provider: Some(false),
             work_done_progress_options: lsp_types::WorkDoneProgressOptions::default(),
@@ -210,6 +215,7 @@ fn handle_request(
         DocumentHighlightRequest::METHOD => handle_document_highlight(req, store),
         FoldingRangeRequest::METHOD => handle_folding_range(req, store),
         DocumentLinkRequest::METHOD => handle_document_link(req, store, tag_index),
+        Completion::METHOD => handle_completion(req, store, tag_index),
         _ => Response {
             id: req.id.clone(),
             result: None,
@@ -451,6 +457,41 @@ fn handle_document_link(
         }
 
         Ok(Some(links))
+    })();
+    make_response(req, result)
+}
+
+fn handle_completion(req: &lsp_server::Request, store: &Store, tag_index: &TagIndex) -> Response {
+    let result = (|| -> Result<Option<CompletionResponse>> {
+        let params: lsp_types::CompletionParams = serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document_position.text_document.uri;
+
+        let mut seen = std::collections::HashSet::new();
+        let mut items = Vec::new();
+
+        if let Some((_text, doc)) = store.get(&uri) {
+            for span in doc.tag_defs() {
+                if seen.insert(span.name.clone()) {
+                    items.push(CompletionItem {
+                        label: span.name.clone(),
+                        kind: Some(CompletionItemKind::REFERENCE),
+                        ..CompletionItem::default()
+                    });
+                }
+            }
+        }
+
+        for name in tag_index.all_tag_names() {
+            if seen.insert(name.to_string()) {
+                items.push(CompletionItem {
+                    label: name.to_string(),
+                    kind: Some(CompletionItemKind::REFERENCE),
+                    ..CompletionItem::default()
+                });
+            }
+        }
+
+        Ok(Some(CompletionResponse::Array(items)))
     })();
     make_response(req, result)
 }
