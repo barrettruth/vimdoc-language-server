@@ -2,7 +2,7 @@
 
 Language server for vim help files.
 
-## Install
+## Installation
 
 ### Cargo
 
