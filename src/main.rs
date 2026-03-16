@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Result, anyhow};
 use clap::{ArgAction, Parser};
@@ -13,8 +13,9 @@ use lsp_types::{
     },
     request::{DocumentSymbolRequest, Formatting, GotoDefinition, Request as LspRequest},
 };
+use serde::Deserialize;
 
-use vimdoc_language_server::{diagnostics, formatter, store::Store};
+use vimdoc_language_server::{diagnostics, formatter, store::Store, tags::TagIndex};
 
 #[derive(Parser)]
 #[command(version, about = "Language server for vim help files")]
@@ -40,6 +41,41 @@ struct Cli {
 
     #[arg(long)]
     print_config_schema: bool,
+
+    #[arg(long, value_name = "PATH")]
+    tag_path: Vec<PathBuf>,
+
+    #[arg(long)]
+    no_runtime_tags: bool,
+}
+
+struct Config {
+    line_width: usize,
+    diagnostics: bool,
+    runtime_tags: bool,
+    tag_paths: Vec<PathBuf>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct InitOptions {
+    #[serde(default)]
+    tag_paths: Vec<PathBuf>,
+    runtime_tags: Option<bool>,
+}
+
+impl Config {
+    fn from_cli_and_init(cli: &Cli, init_opts: InitOptions) -> Self {
+        let mut tag_paths = cli.tag_path.clone();
+        tag_paths.extend(init_opts.tag_paths);
+
+        Self {
+            line_width: cli.line_width,
+            diagnostics: !cli.no_diagnostics,
+            runtime_tags: init_opts.runtime_tags.unwrap_or(!cli.no_runtime_tags),
+            tag_paths,
+        }
+    }
 }
 
 fn main() -> Result<()> {
@@ -66,15 +102,66 @@ fn main() -> Result<()> {
 
     let init_params: InitializeParams =
         serde_json::from_value(connection.initialize(server_caps)?)?;
-    let _ = init_params;
 
-    main_loop(&connection, &cli)?;
+    let init_opts: InitOptions = init_params
+        .initialization_options
+        .and_then(|v| serde_json::from_value(v).ok())
+        .unwrap_or_default();
+
+    let config = Config::from_cli_and_init(&cli, init_opts);
+
+    let workspace_root = init_params
+        .workspace_folders
+        .as_ref()
+        .and_then(|wf| wf.first())
+        .and_then(|f| uri_to_path(&f.uri))
+        .or_else(|| {
+            #[allow(deprecated)]
+            init_params.root_uri.as_ref().and_then(uri_to_path)
+        });
+
+    let mut tag_index = TagIndex::new();
+
+    if let Some(ref root) = workspace_root {
+        let _ = tag_index.scan_workspace(root);
+    }
+
+    for tp in &config.tag_paths {
+        load_tag_path(&mut tag_index, tp);
+    }
+
+    if config.runtime_tags {
+        if let Ok(runtime) = std::env::var("VIMRUNTIME") {
+            let tags_file = Path::new(&runtime).join("doc/tags");
+            if tags_file.exists() {
+                let _ = tag_index.load_tags_file(&tags_file);
+            }
+        }
+    }
+
+    main_loop(&connection, &config, &mut tag_index)?;
 
     io_threads.join()?;
     Ok(())
 }
 
-fn main_loop(connection: &Connection, cli: &Cli) -> Result<()> {
+fn load_tag_path(tag_index: &mut TagIndex, path: &Path) {
+    if path.is_dir() {
+        let tags_file = path.join("tags");
+        if tags_file.exists() {
+            let _ = tag_index.load_tags_file(&tags_file);
+        }
+    } else if path.exists() {
+        let _ = tag_index.load_tags_file(path);
+    }
+}
+
+fn uri_to_path(uri: &Uri) -> Option<PathBuf> {
+    let s = uri.as_str();
+    s.strip_prefix("file://").map(PathBuf::from)
+}
+
+fn main_loop(connection: &Connection, config: &Config, tag_index: &mut TagIndex) -> Result<()> {
     let mut store = Store::default();
 
     for msg in &connection.receiver {
@@ -83,11 +170,11 @@ fn main_loop(connection: &Connection, cli: &Cli) -> Result<()> {
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
-                let resp = handle_request(&req, &store, cli);
+                let resp = handle_request(&req, &store, config, tag_index);
                 connection.sender.send(Message::Response(resp))?;
             }
             Message::Notification(notif) => {
-                handle_notification(notif, &mut store, connection, cli)?;
+                handle_notification(notif, &mut store, connection, config, tag_index)?;
             }
             Message::Response(_) => {}
         }
@@ -95,7 +182,12 @@ fn main_loop(connection: &Connection, cli: &Cli) -> Result<()> {
     Ok(())
 }
 
-fn handle_request(req: &lsp_server::Request, store: &Store, cli: &Cli) -> Response {
+fn handle_request(
+    req: &lsp_server::Request,
+    store: &Store,
+    config: &Config,
+    tag_index: &mut TagIndex,
+) -> Response {
     match req.method.as_str() {
         Formatting::METHOD => {
             let result = (|| -> Result<Option<Vec<TextEdit>>> {
@@ -103,7 +195,7 @@ fn handle_request(req: &lsp_server::Request, store: &Store, cli: &Cli) -> Respon
                     serde_json::from_value(req.params.clone())?;
                 let uri = params.text_document.uri;
                 let (text, _doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
-                let new_text = formatter::format_document(text, cli.line_width);
+                let new_text = formatter::format_document(text, config.line_width);
                 if new_text == text {
                     return Ok(None);
                 }
@@ -172,10 +264,17 @@ fn handle_request(req: &lsp_server::Request, store: &Store, cli: &Cli) -> Respon
                 };
 
                 let def = doc.tag_defs().find(|d| d.name == name);
-                Ok(def.map(|d| {
-                    GotoDefinitionResponse::Scalar(Location {
+                if let Some(d) = def {
+                    return Ok(Some(GotoDefinitionResponse::Scalar(Location {
                         uri: uri.clone(),
                         range: d.range,
+                    })));
+                }
+
+                Ok(tag_index.resolve(&name).map(|entry| {
+                    GotoDefinitionResponse::Scalar(Location {
+                        uri: entry.uri,
+                        range: entry.range,
                     })
                 }))
             })();
@@ -198,7 +297,8 @@ fn handle_notification(
     notif: Notification,
     store: &mut Store,
     connection: &Connection,
-    cli: &Cli,
+    config: &Config,
+    tag_index: &mut TagIndex,
 ) -> Result<()> {
     match notif.method.as_str() {
         DidOpenTextDocument::METHOD => {
@@ -207,7 +307,10 @@ fn handle_notification(
             let uri = params.text_document.uri;
             let text = params.text_document.text;
             store.open(uri.clone(), text);
-            if !cli.no_diagnostics {
+            if let Some((_text, doc)) = store.get(&uri) {
+                tag_index.update_file(&uri, doc);
+            }
+            if config.diagnostics {
                 push_diagnostics(connection, &uri, store)?;
             }
         }
@@ -222,7 +325,10 @@ fn handle_notification(
                 .map(|c| c.text)
                 .unwrap_or_default();
             store.change(&uri, text);
-            if !cli.no_diagnostics {
+            if let Some((_text, doc)) = store.get(&uri) {
+                tag_index.update_file(&uri, doc);
+            }
+            if config.diagnostics {
                 push_diagnostics(connection, &uri, store)?;
             }
         }
