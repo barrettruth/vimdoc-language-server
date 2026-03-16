@@ -4,17 +4,17 @@ use anyhow::{Result, anyhow};
 use clap::{ArgAction, Parser};
 use lsp_server::{Connection, Message, Notification, Response};
 use lsp_types::{
-    DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse, FoldingRange,
-    FoldingRangeKind, GotoDefinitionResponse, InitializeParams, Location, OneOf, Position,
-    PublishDiagnosticsParams, Range, ServerCapabilities, SymbolKind, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextEdit, Uri,
+    DocumentHighlight, DocumentHighlightKind, DocumentLink, DocumentSymbol, DocumentSymbolResponse,
+    FoldingRange, FoldingRangeKind, GotoDefinitionResponse, InitializeParams, Location, OneOf,
+    Position, PublishDiagnosticsParams, Range, ServerCapabilities, SymbolKind,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument,
         Notification as LspNotification, PublishDiagnostics,
     },
     request::{
-        DocumentHighlightRequest, DocumentSymbolRequest, FoldingRangeRequest, Formatting,
-        GotoDefinition, Request as LspRequest,
+        DocumentHighlightRequest, DocumentLinkRequest, DocumentSymbolRequest, FoldingRangeRequest,
+        Formatting, GotoDefinition, Request as LspRequest,
     },
 };
 use serde::Deserialize;
@@ -108,6 +108,10 @@ fn main() -> Result<()> {
         definition_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
+        document_link_provider: Some(lsp_types::DocumentLinkOptions {
+            resolve_provider: Some(false),
+            work_done_progress_options: lsp_types::WorkDoneProgressOptions::default(),
+        }),
         ..Default::default()
     })?;
 
@@ -205,6 +209,7 @@ fn handle_request(
         GotoDefinition::METHOD => handle_goto_definition(req, store, tag_index),
         DocumentHighlightRequest::METHOD => handle_document_highlight(req, store),
         FoldingRangeRequest::METHOD => handle_folding_range(req, store),
+        DocumentLinkRequest::METHOD => handle_document_link(req, store, tag_index),
         _ => Response {
             id: req.id.clone(),
             result: None,
@@ -406,6 +411,46 @@ fn handle_folding_range(req: &lsp_server::Request, store: &Store) -> Response {
         }
 
         Ok(Some(ranges))
+    })();
+    make_response(req, result)
+}
+
+fn handle_document_link(
+    req: &lsp_server::Request,
+    store: &Store,
+    tag_index: &mut TagIndex,
+) -> Response {
+    let result = (|| -> Result<Option<Vec<DocumentLink>>> {
+        let params: lsp_types::DocumentLinkParams = serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document.uri;
+        let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+
+        let mut links = Vec::new();
+        for span in doc.tag_refs() {
+            let target = doc
+                .tag_defs()
+                .find(|d| d.name == span.name)
+                .map(|d| Location {
+                    uri: uri.clone(),
+                    range: d.range,
+                })
+                .or_else(|| {
+                    tag_index.resolve(&span.name).map(|e| Location {
+                        uri: e.uri,
+                        range: e.range,
+                    })
+                });
+            if let Some(loc) = target {
+                links.push(DocumentLink {
+                    range: span.range,
+                    target: Some(loc.uri),
+                    tooltip: Some(span.name.clone()),
+                    data: None,
+                });
+            }
+        }
+
+        Ok(Some(links))
     })();
     make_response(req, result)
 }
