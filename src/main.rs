@@ -4,18 +4,27 @@ use anyhow::{Result, anyhow};
 use clap::{ArgAction, Parser};
 use lsp_server::{Connection, Message, Notification, Response};
 use lsp_types::{
-    DocumentSymbol, DocumentSymbolResponse, GotoDefinitionResponse, InitializeParams, Location,
-    OneOf, Position, PublishDiagnosticsParams, Range, ServerCapabilities, SymbolKind,
-    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
+    DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolResponse,
+    GotoDefinitionResponse, InitializeParams, Location, OneOf, Position, PublishDiagnosticsParams,
+    Range, ServerCapabilities, SymbolKind, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextEdit, Uri,
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument,
         Notification as LspNotification, PublishDiagnostics,
     },
-    request::{DocumentSymbolRequest, Formatting, GotoDefinition, Request as LspRequest},
+    request::{
+        DocumentHighlightRequest, DocumentSymbolRequest, Formatting, GotoDefinition,
+        Request as LspRequest,
+    },
 };
 use serde::Deserialize;
 
-use vimdoc_language_server::{diagnostics, formatter, store::Store, tags::TagIndex};
+use vimdoc_language_server::{
+    diagnostics, formatter,
+    parser::{Document, Span},
+    store::Store,
+    tags::TagIndex,
+};
 
 #[derive(Parser)]
 #[command(version, about = "Language server for vim help files")]
@@ -97,6 +106,7 @@ fn main() -> Result<()> {
         },
         document_symbol_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
+        document_highlight_provider: Some(OneOf::Left(true)),
         ..Default::default()
     })?;
 
@@ -189,98 +199,10 @@ fn handle_request(
     tag_index: &mut TagIndex,
 ) -> Response {
     match req.method.as_str() {
-        Formatting::METHOD => {
-            let result = (|| -> Result<Option<Vec<TextEdit>>> {
-                let params: lsp_types::DocumentFormattingParams =
-                    serde_json::from_value(req.params.clone())?;
-                let uri = params.text_document.uri;
-                let (text, _doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
-                let new_text = formatter::format_document(text, config.line_width);
-                if new_text == text {
-                    return Ok(None);
-                }
-                let end = text_end_position(text);
-                Ok(Some(vec![TextEdit {
-                    range: Range {
-                        start: Position {
-                            line: 0,
-                            character: 0,
-                        },
-                        end,
-                    },
-                    new_text,
-                }]))
-            })();
-            make_response(req, result)
-        }
-
-        DocumentSymbolRequest::METHOD => {
-            let result = (|| -> Result<Option<DocumentSymbolResponse>> {
-                let params: lsp_types::DocumentSymbolParams =
-                    serde_json::from_value(req.params.clone())?;
-                let uri = params.text_document.uri;
-                let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
-                let symbols: Vec<DocumentSymbol> = doc
-                    .tag_defs()
-                    .map(|span| {
-                        #[allow(deprecated)]
-                        DocumentSymbol {
-                            name: span.name.clone(),
-                            kind: SymbolKind::KEY,
-                            range: span.range,
-                            selection_range: span.range,
-                            detail: None,
-                            tags: None,
-                            deprecated: None,
-                            children: None,
-                        }
-                    })
-                    .collect();
-                Ok(Some(DocumentSymbolResponse::Nested(symbols)))
-            })();
-            make_response(req, result)
-        }
-
-        GotoDefinition::METHOD => {
-            let result = (|| -> Result<Option<GotoDefinitionResponse>> {
-                let params: lsp_types::GotoDefinitionParams =
-                    serde_json::from_value(req.params.clone())?;
-                let uri = params.text_document_position_params.text_document.uri;
-                let pos = params.text_document_position_params.position;
-                let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
-
-                let tag_name = doc
-                    .tag_refs()
-                    .find(|r| position_in_range(pos, r.range))
-                    .map(|r| r.name.clone())
-                    .or_else(|| {
-                        doc.tag_defs()
-                            .find(|d| position_in_range(pos, d.range))
-                            .map(|d| d.name.clone())
-                    });
-
-                let Some(name) = tag_name else {
-                    return Ok(None);
-                };
-
-                let def = doc.tag_defs().find(|d| d.name == name);
-                if let Some(d) = def {
-                    return Ok(Some(GotoDefinitionResponse::Scalar(Location {
-                        uri: uri.clone(),
-                        range: d.range,
-                    })));
-                }
-
-                Ok(tag_index.resolve(&name).map(|entry| {
-                    GotoDefinitionResponse::Scalar(Location {
-                        uri: entry.uri,
-                        range: entry.range,
-                    })
-                }))
-            })();
-            make_response(req, result)
-        }
-
+        Formatting::METHOD => handle_formatting(req, store, config),
+        DocumentSymbolRequest::METHOD => handle_document_symbol(req, store),
+        GotoDefinition::METHOD => handle_goto_definition(req, store, tag_index),
+        DocumentHighlightRequest::METHOD => handle_document_highlight(req, store),
         _ => Response {
             id: req.id.clone(),
             result: None,
@@ -291,6 +213,134 @@ fn handle_request(
             }),
         },
     }
+}
+
+fn handle_formatting(req: &lsp_server::Request, store: &Store, config: &Config) -> Response {
+    let result = (|| -> Result<Option<Vec<TextEdit>>> {
+        let params: lsp_types::DocumentFormattingParams =
+            serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document.uri;
+        let (text, _doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+        let new_text = formatter::format_document(text, config.line_width);
+        if new_text == text {
+            return Ok(None);
+        }
+        let end = text_end_position(text);
+        Ok(Some(vec![TextEdit {
+            range: Range {
+                start: Position {
+                    line: 0,
+                    character: 0,
+                },
+                end,
+            },
+            new_text,
+        }]))
+    })();
+    make_response(req, result)
+}
+
+fn handle_document_symbol(req: &lsp_server::Request, store: &Store) -> Response {
+    let result = (|| -> Result<Option<DocumentSymbolResponse>> {
+        let params: lsp_types::DocumentSymbolParams = serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document.uri;
+        let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+        let symbols: Vec<DocumentSymbol> = doc
+            .tag_defs()
+            .map(|span| {
+                #[allow(deprecated)]
+                DocumentSymbol {
+                    name: span.name.clone(),
+                    kind: SymbolKind::KEY,
+                    range: span.range,
+                    selection_range: span.range,
+                    detail: None,
+                    tags: None,
+                    deprecated: None,
+                    children: None,
+                }
+            })
+            .collect();
+        Ok(Some(DocumentSymbolResponse::Nested(symbols)))
+    })();
+    make_response(req, result)
+}
+
+fn handle_goto_definition(
+    req: &lsp_server::Request,
+    store: &Store,
+    tag_index: &mut TagIndex,
+) -> Response {
+    let result = (|| -> Result<Option<GotoDefinitionResponse>> {
+        let params: lsp_types::GotoDefinitionParams = serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document_position_params.text_document.uri;
+        let pos = params.text_document_position_params.position;
+        let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+
+        let Some(name) = tag_name_at(doc, pos) else {
+            return Ok(None);
+        };
+
+        let def = doc.tag_defs().find(|d| d.name == name);
+        if let Some(d) = def {
+            return Ok(Some(GotoDefinitionResponse::Scalar(Location {
+                uri: uri.clone(),
+                range: d.range,
+            })));
+        }
+
+        Ok(tag_index.resolve(&name).map(|entry| {
+            GotoDefinitionResponse::Scalar(Location {
+                uri: entry.uri,
+                range: entry.range,
+            })
+        }))
+    })();
+    make_response(req, result)
+}
+
+fn handle_document_highlight(req: &lsp_server::Request, store: &Store) -> Response {
+    let result =
+        (|| -> Result<Option<Vec<DocumentHighlight>>> {
+            let params: lsp_types::DocumentHighlightParams =
+                serde_json::from_value(req.params.clone())?;
+            let uri = params.text_document_position_params.text_document.uri;
+            let pos = params.text_document_position_params.position;
+            let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+
+            let Some(name) = tag_name_at(doc, pos) else {
+                return Ok(None);
+            };
+
+            let mut highlights: Vec<DocumentHighlight> = doc
+                .tag_defs()
+                .filter(|d| d.name == name)
+                .map(|d| DocumentHighlight {
+                    range: d.range,
+                    kind: Some(DocumentHighlightKind::WRITE),
+                })
+                .collect();
+
+            highlights.extend(doc.tag_refs().filter(|r| r.name == name).map(|r| {
+                DocumentHighlight {
+                    range: r.range,
+                    kind: Some(DocumentHighlightKind::READ),
+                }
+            }));
+
+            Ok(Some(highlights))
+        })();
+    make_response(req, result)
+}
+
+fn tag_name_at(doc: &Document, pos: Position) -> Option<String> {
+    find_span_at(doc.tag_refs(), pos)
+        .or_else(|| find_span_at(doc.tag_defs(), pos))
+        .map(|s| s.name.clone())
+}
+
+fn find_span_at<'a>(mut spans: impl Iterator<Item = &'a Span>, pos: Position) -> Option<&'a Span> {
+    spans.find(|s| position_in_range(pos, s.range))
 }
 
 fn handle_notification(
