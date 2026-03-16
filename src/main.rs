@@ -6,16 +6,17 @@ use lsp_server::{Connection, Message, Notification, Response};
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DocumentHighlight,
     DocumentHighlightKind, DocumentLink, DocumentSymbol, DocumentSymbolResponse, FoldingRange,
-    FoldingRangeKind, GotoDefinitionResponse, InitializeParams, Location, OneOf, Position,
-    PublishDiagnosticsParams, Range, ServerCapabilities, SymbolKind, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextEdit, Uri,
+    FoldingRangeKind, GotoDefinitionResponse, Hover, HoverContents, InitializeParams, Location,
+    MarkupContent, MarkupKind, OneOf, Position, PublishDiagnosticsParams, Range,
+    ServerCapabilities, SymbolKind, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit,
+    Uri,
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument,
         Notification as LspNotification, PublishDiagnostics,
     },
     request::{
         Completion, DocumentHighlightRequest, DocumentLinkRequest, DocumentSymbolRequest,
-        FoldingRangeRequest, Formatting, GotoDefinition, Request as LspRequest,
+        FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest, Request as LspRequest,
     },
 };
 use serde::Deserialize;
@@ -107,6 +108,7 @@ fn main() -> Result<()> {
         },
         document_symbol_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
+        hover_provider: Some(lsp_types::HoverProviderCapability::Simple(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
@@ -216,6 +218,7 @@ fn handle_request(
         FoldingRangeRequest::METHOD => handle_folding_range(req, store),
         DocumentLinkRequest::METHOD => handle_document_link(req, store, tag_index),
         Completion::METHOD => handle_completion(req, store, tag_index),
+        HoverRequest::METHOD => handle_hover(req, store, tag_index),
         _ => Response {
             id: req.id.clone(),
             result: None,
@@ -494,6 +497,58 @@ fn handle_completion(req: &lsp_server::Request, store: &Store, tag_index: &TagIn
         Ok(Some(CompletionResponse::Array(items)))
     })();
     make_response(req, result)
+}
+
+fn handle_hover(req: &lsp_server::Request, store: &Store, tag_index: &mut TagIndex) -> Response {
+    let result = (|| -> Result<Option<Hover>> {
+        let params: lsp_types::HoverParams = serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document_position_params.text_document.uri;
+        let pos = params.text_document_position_params.position;
+        let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+
+        let Some(name) = tag_name_at(doc, pos) else {
+            return Ok(None);
+        };
+
+        let location = doc
+            .tag_defs()
+            .find(|d| d.name == name)
+            .map(|d| (uri.clone(), d.range))
+            .or_else(|| tag_index.resolve(&name).map(|e| (e.uri, e.range)));
+
+        let Some((def_uri, def_range)) = location else {
+            return Ok(None);
+        };
+
+        let text = if def_uri == uri {
+            store.get(&def_uri).map(|(t, _)| t.to_string())
+        } else {
+            uri_to_path(&def_uri).and_then(|p| std::fs::read_to_string(p).ok())
+        };
+
+        let Some(text) = text else {
+            return Ok(None);
+        };
+
+        let context = extract_hover_context(&text, def_range.start.line);
+
+        Ok(Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::PlainText,
+                value: context,
+            }),
+            range: None,
+        }))
+    })();
+    make_response(req, result)
+}
+
+fn extract_hover_context(text: &str, line: u32) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+    let line = line as usize;
+    let start = line.saturating_sub(1);
+    let end = (line + 4).min(lines.len());
+    lines[start..end].join("\n")
 }
 
 fn tag_name_at(doc: &Document, pos: Position) -> Option<String> {
