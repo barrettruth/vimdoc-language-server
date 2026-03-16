@@ -22,6 +22,7 @@ pub struct ExternalTag {
 #[derive(Debug, Default)]
 pub struct TagIndex {
     workspace: HashMap<String, Vec<TagEntry>>,
+    workspace_docs: HashMap<Uri, Document>,
     external: HashMap<String, Vec<ExternalTag>>,
     external_cache: HashMap<PathBuf, Document>,
 }
@@ -43,6 +44,7 @@ impl TagIndex {
                     range: span.range,
                 });
         }
+        self.workspace_docs.insert(uri.clone(), doc.clone());
     }
 
     pub fn remove_file(&mut self, uri: &Uri) {
@@ -50,6 +52,7 @@ impl TagIndex {
             entries.retain(|e| &e.uri != uri);
             !entries.is_empty()
         });
+        self.workspace_docs.remove(uri);
     }
 
     pub fn all_tag_names(&self) -> impl Iterator<Item = &str> {
@@ -57,6 +60,22 @@ impl TagIndex {
             .keys()
             .chain(self.external.keys())
             .map(String::as_str)
+    }
+
+    #[must_use]
+    pub fn find_references(&self, name: &str) -> Vec<TagEntry> {
+        let mut refs = Vec::new();
+        for (uri, doc) in &self.workspace_docs {
+            for span in doc.tag_refs() {
+                if span.name == name {
+                    refs.push(TagEntry {
+                        uri: uri.clone(),
+                        range: span.range,
+                    });
+                }
+            }
+        }
+        refs
     }
 
     pub fn resolve(&mut self, name: &str) -> Option<TagEntry> {

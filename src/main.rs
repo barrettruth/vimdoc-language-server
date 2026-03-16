@@ -16,7 +16,8 @@ use lsp_types::{
     },
     request::{
         Completion, DocumentHighlightRequest, DocumentLinkRequest, DocumentSymbolRequest,
-        FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest, Request as LspRequest,
+        FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest, References,
+        Request as LspRequest,
     },
 };
 use serde::Deserialize;
@@ -108,6 +109,7 @@ fn main() -> Result<()> {
         },
         document_symbol_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
+        references_provider: Some(OneOf::Left(true)),
         hover_provider: Some(lsp_types::HoverProviderCapability::Simple(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
@@ -219,6 +221,7 @@ fn handle_request(
         DocumentLinkRequest::METHOD => handle_document_link(req, store, tag_index),
         Completion::METHOD => handle_completion(req, store, tag_index),
         HoverRequest::METHOD => handle_hover(req, store, tag_index),
+        References::METHOD => handle_references(req, store, tag_index),
         _ => Response {
             id: req.id.clone(),
             result: None,
@@ -539,6 +542,40 @@ fn handle_hover(req: &lsp_server::Request, store: &Store, tag_index: &mut TagInd
             }),
             range: None,
         }))
+    })();
+    make_response(req, result)
+}
+
+fn handle_references(req: &lsp_server::Request, store: &Store, tag_index: &TagIndex) -> Response {
+    let result = (|| -> Result<Option<Vec<Location>>> {
+        let params: lsp_types::ReferenceParams = serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+        let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+
+        let Some(name) = tag_name_at(doc, pos) else {
+            return Ok(None);
+        };
+
+        let mut locations: Vec<Location> = tag_index
+            .find_references(&name)
+            .into_iter()
+            .map(|e| Location {
+                uri: e.uri,
+                range: e.range,
+            })
+            .collect();
+
+        if params.context.include_declaration {
+            if let Some(d) = doc.tag_defs().find(|d| d.name == name) {
+                locations.push(Location {
+                    uri: uri.clone(),
+                    range: d.range,
+                });
+            }
+        }
+
+        Ok(Some(locations))
     })();
     make_response(req, result)
 }
