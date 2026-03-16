@@ -1,22 +1,6 @@
 # vimdoc-language-server
 
-> **⚠️ Experimental — not ready for use.** Everything is incomplete. The parser
-> is naive, diagnostics are minimal, and the formatter will mangle files. Do not
-> use this on anything you care about.
-
 Language server for vim help files.
-
-## Status
-
-Pre-alpha. The following capabilities exist in skeletal form:
-
-- `textDocument/formatting` — separator normalization, heading alignment, prose
-  reflow
-- `textDocument/publishDiagnostics` — duplicate tag definitions
-- `textDocument/documentSymbol` — tag definitions
-- `textDocument/definition` — same-file tag links
-
-None of these are reliable yet.
 
 ## Install
 
@@ -42,29 +26,32 @@ cargo install --path .
 
 ## Usage
 
+Configure `vimdoc-language-server` in your editor of choice, for example with
+[Neovim](https://neovim.io):
+
 ```lua
-vim.lsp.start({
-  name = 'vimdoc',
+vim.lsp.config('vimdoc_ls', {
   cmd = { 'vimdoc-language-server' },
   filetypes = { 'help' },
-  root_dir = vim.fn.getcwd(),
+  root_markers = { 'doc', '.git' },
 })
+vim.lsp.enable('vimdoc_ls')
 ```
 
-See [`minimal_init.lua`](minimal_init.lua) for a standalone example.
+## Features
 
-## CLI
-
-```
-vimdoc-language-server [OPTIONS]
-
-Options:
-  --line-width <N>    Target line width [default: 78]
-  --no-formatting     Disable formatting
-  --no-diagnostics    Disable diagnostics
-  --log-file <PATH>   Write logs to file
-  -v, --verbose       Increase verbosity
-```
+- [x] **Formatting** — separator normalization, prose reflow, heading alignment
+- [x] **Diagnostics** — duplicate tag definitions
+- [x] **Document symbols** — all `*tag*` definitions
+- [x] **Go-to-definition** — `|tag-ref|` to `*tag*` in the same file
+- [ ] **Completion** — tag completion from `*tag*` definitions
+- [ ] **Hover** — documentation preview for tags
+- [ ] **References** — find all references to a tag
+- [ ] **Rename** — rename tags and their references
+- [ ] **Cross-file navigation** — go-to-definition across files
+- [ ] **Semantic tokens** — syntax-aware highlighting
+- [ ] **Code actions** — quick fixes and refactors
+- [ ] **Folding** — section-based fold ranges
 
 ## License
 
