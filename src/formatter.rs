@@ -150,4 +150,22 @@ mod tests {
         let twice = format_document(&once, 78);
         assert_eq!(once, twice);
     }
+
+    #[test]
+    fn aligns_heading_tag_right() {
+        let result = format_document("Introduction *intro*\n", 30);
+        assert_eq!(result, "Introduction           *intro*\n");
+    }
+
+    #[test]
+    fn heading_tag_at_column_zero_preserved() {
+        let result = format_document("*intro* Introduction\n", 30);
+        assert_eq!(result, "*intro* Introduction\n");
+    }
+
+    #[test]
+    fn heading_tag_fallback_when_line_too_long() {
+        let result = format_document("A very long heading        *tag*\n", 20);
+        assert_eq!(result, "A very long heading *tag*\n");
+    }
 }
