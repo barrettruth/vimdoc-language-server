@@ -520,6 +520,15 @@ fn handle_completion(req: &lsp_server::Request, store: &Store, tag_index: &TagIn
     let result = (|| -> Result<Option<CompletionResponse>> {
         let params: lsp_types::CompletionParams = serde_json::from_value(req.params.clone())?;
         let uri = params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+
+        let Some((text, _doc)) = store.get(&uri) else {
+            return Ok(None);
+        };
+
+        if !is_inside_taglink(text, pos) {
+            return Ok(None);
+        }
 
         let mut seen = std::collections::HashSet::new();
         let mut items = Vec::new();
@@ -529,7 +538,9 @@ fn handle_completion(req: &lsp_server::Request, store: &Store, tag_index: &TagIn
                 if seen.insert(span.name.clone()) {
                     items.push(CompletionItem {
                         label: span.name.clone(),
-                        kind: Some(CompletionItemKind::REFERENCE),
+                        insert_text: Some(format!("{}|", span.name)),
+                        kind: Some(CompletionItemKind::KEYWORD),
+                        filter_text: Some(span.name.clone()),
                         ..CompletionItem::default()
                     });
                 }
@@ -540,7 +551,9 @@ fn handle_completion(req: &lsp_server::Request, store: &Store, tag_index: &TagIn
             if seen.insert(name.to_string()) {
                 items.push(CompletionItem {
                     label: name.to_string(),
-                    kind: Some(CompletionItemKind::REFERENCE),
+                    insert_text: Some(format!("{name}|")),
+                    kind: Some(CompletionItemKind::KEYWORD),
+                    filter_text: Some(name.to_string()),
                     ..CompletionItem::default()
                 });
             }
@@ -750,6 +763,20 @@ fn extract_hover_context(text: &str, line: u32) -> Option<String> {
     let start = line.saturating_sub(1);
     let end = (line + 4).min(lines.len());
     Some(lines[start..end].join("\n"))
+}
+
+fn is_inside_taglink(text: &str, pos: Position) -> bool {
+    let Some(line) = text.lines().nth(pos.line as usize) else {
+        return false;
+    };
+    let col = pos.character as usize;
+    let prefix = if col <= line.len() {
+        &line[..col]
+    } else {
+        line
+    };
+    let pipes = prefix.bytes().filter(|&b| b == b'|').count();
+    pipes % 2 == 1
 }
 
 fn tag_name_at(doc: &Document, pos: Position) -> Option<String> {
