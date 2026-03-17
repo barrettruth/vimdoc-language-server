@@ -34,9 +34,9 @@ fn find_vimruntime() -> Option<PathBuf> {
 fn doc_txt_files(doc_dir: &std::path::Path) -> Vec<PathBuf> {
     std::fs::read_dir(doc_dir)
         .expect("read doc dir")
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .map(|e| e.path())
-        .filter(|p| p.extension().map_or(false, |x| x == "txt"))
+        .filter(|p| p.extension().is_some_and(|x| x == "txt"))
         .collect()
 }
 
