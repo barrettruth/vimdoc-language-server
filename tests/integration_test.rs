@@ -671,14 +671,17 @@ mod prepare_rename {
 
         let expected = expect![[r#"
             {
-              "start": {
-                "line": 0,
-                "character": 0
+              "range": {
+                "start": {
+                  "line": 0,
+                  "character": 1
+                },
+                "end": {
+                  "line": 0,
+                  "character": 4
+                }
               },
-              "end": {
-                "line": 0,
-                "character": 5
-              }
+              "placeholder": "foo"
             }"#]];
         expected.assert_eq(&serde_json::to_string_pretty(&result).unwrap());
     }

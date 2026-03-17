@@ -16,7 +16,15 @@ pub fn handle_prepare_rename(req: &lsp_server::Request, store: &Store) -> Respon
 
         let span = find_span_at(doc.tag_refs(), pos).or_else(|| find_span_at(doc.tag_defs(), pos));
 
-        Ok(span.map(|s| lsp_types::PrepareRenameResponse::Range(s.range)))
+        Ok(span.map(|s| {
+            let mut range = s.range;
+            range.start.character += 1;
+            range.end.character -= 1;
+            lsp_types::PrepareRenameResponse::RangeWithPlaceholder {
+                range,
+                placeholder: s.name.clone(),
+            }
+        }))
     })();
     make_response(req, result)
 }
