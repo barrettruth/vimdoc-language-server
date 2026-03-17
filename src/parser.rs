@@ -81,6 +81,11 @@ fn parse_line(line_num: u32, raw: &str, in_code: &mut bool) -> ParsedLine {
         return mk(LineKind::Separator(SepKind::Minor), vec![], vec![]);
     }
 
+    if is_fence_start(trimmed) {
+        *in_code = true;
+        return mk(LineKind::CodeBody, vec![], vec![]);
+    }
+
     let (tag_defs, tag_refs) = scan_inline(line_num, raw);
 
     if trimmed.ends_with('>') && !trimmed.ends_with("->") {
@@ -97,6 +102,10 @@ fn mk(kind: LineKind, tag_defs: Vec<Span>, tag_refs: Vec<Span>) -> ParsedLine {
         tag_defs,
         tag_refs,
     }
+}
+
+fn is_fence_start(s: &str) -> bool {
+    s.len() > 1 && s.starts_with('>') && s[1..].bytes().all(|b| b.is_ascii_alphabetic())
 }
 
 #[allow(clippy::similar_names)]
@@ -249,6 +258,23 @@ mod tests {
         let span = doc.tag_refs().next().unwrap();
         assert_eq!(span.range.start.character, 3);
         assert_eq!(span.range.end.character, 8);
+    }
+
+    #[test]
+    fn code_fence_language_is_code_body() {
+        let text = "prose\n>lua\n    code()\n<\nafter";
+        let doc = Document::parse(text);
+        assert_eq!(doc.lines[1].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[2].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[3].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[4].kind, LineKind::Text);
+    }
+
+    #[test]
+    fn code_fence_language_no_tags_scanned() {
+        let text = ">vim\n    *not-a-tag*\n<";
+        let doc = Document::parse(text);
+        assert_eq!(doc.tag_defs().count(), 0);
     }
 
     #[test]
