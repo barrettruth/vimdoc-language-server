@@ -62,6 +62,11 @@ impl TagIndex {
             .map(String::as_str)
     }
 
+    #[must_use]
+    pub fn workspace_defs(&self, name: &str) -> Option<&Vec<TagEntry>> {
+        self.workspace.get(name)
+    }
+
     pub fn workspace_docs(&self) -> impl Iterator<Item = (&Uri, &Document)> {
         self.workspace_docs.iter()
     }

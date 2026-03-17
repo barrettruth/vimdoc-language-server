@@ -618,11 +618,13 @@ fn handle_references(req: &lsp_server::Request, store: &Store, tag_index: &TagIn
             .collect();
 
         if params.context.include_declaration {
-            if let Some(d) = doc.tag_defs().find(|d| d.name == name) {
-                locations.push(Location {
-                    uri: uri.clone(),
-                    range: d.range,
-                });
+            if let Some(entries) = tag_index.workspace_defs(&name) {
+                for entry in entries {
+                    locations.push(Location {
+                        uri: entry.uri.clone(),
+                        range: entry.range,
+                    });
+                }
             }
         }
 
