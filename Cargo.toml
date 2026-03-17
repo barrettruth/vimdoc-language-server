@@ -19,6 +19,8 @@ lsp-types = { version = "0.97", features = ["proposed"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 glob = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 tempfile = "3"

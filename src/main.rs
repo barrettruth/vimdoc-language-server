@@ -7,6 +7,7 @@ use lsp_types::{
     CompletionOptions, InitializeParams, OneOf, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind,
 };
+use tracing_subscriber::EnvFilter;
 
 use vimdoc_language_server::{
     server::{self, Config, InitOptions},
@@ -79,6 +80,31 @@ fn server_capabilities(cli: &Cli) -> ServerCapabilities {
     }
 }
 
+fn init_tracing(cli: &Cli) -> Result<()> {
+    let level = match cli.verbose {
+        0 => "warn",
+        1 => "info",
+        2 => "debug",
+        _ => "trace",
+    };
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
+
+    if let Some(ref log_path) = cli.log_file {
+        let file = std::fs::File::create(log_path)?;
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_writer(std::sync::Mutex::new(file))
+            .with_ansi(false)
+            .init();
+    } else {
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_writer(std::io::stderr)
+            .init();
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -86,6 +112,8 @@ fn main() -> Result<()> {
         println!("{{}}");
         return Ok(());
     }
+
+    init_tracing(&cli)?;
 
     let (connection, io_threads) = Connection::stdio();
 
@@ -123,7 +151,9 @@ fn main() -> Result<()> {
     let mut tag_index = TagIndex::new();
 
     if let Some(ref root) = workspace_root {
-        let _ = tag_index.scan_workspace(root);
+        if let Err(e) = tag_index.scan_workspace(root) {
+            tracing::warn!(error = %e, "failed to scan workspace");
+        }
     }
 
     for tp in &config.tag_paths {
@@ -134,10 +164,20 @@ fn main() -> Result<()> {
         if let Ok(runtime) = std::env::var("VIMRUNTIME") {
             let tags_file = Path::new(&runtime).join("doc/tags");
             if tags_file.exists() {
-                let _ = tag_index.load_tags_file(&tags_file);
+                if let Err(e) = tag_index.load_tags_file(&tags_file) {
+                    tracing::warn!(path = %tags_file.display(), error = %e, "failed to load runtime tags");
+                }
             }
         }
     }
+
+    tracing::info!(
+        line_width = config.line_width,
+        formatting = config.formatting,
+        diagnostics = config.diagnostics,
+        hover = config.hover,
+        "server initialized"
+    );
 
     server::main_loop(&connection, &config, &mut tag_index)?;
 

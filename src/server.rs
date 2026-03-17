@@ -49,10 +49,12 @@ pub fn main_loop(connection: &Connection, config: &Config, tag_index: &mut TagIn
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
+                tracing::debug!(method = %req.method, "handling request");
                 let resp = handle_request(&req, &store, config, tag_index);
                 connection.sender.send(Message::Response(resp))?;
             }
             Message::Notification(notif) => {
+                tracing::debug!(method = %notif.method, "handling notification");
                 handle_notification(notif, &mut store, connection, config, tag_index)?;
             }
             Message::Response(_) => {}
@@ -151,6 +153,8 @@ fn push_diagnostics(
         .map(|(_t, doc)| diagnostics::compute(doc, tag_index))
         .unwrap_or_default();
 
+    tracing::debug!(uri = %uri.as_str(), count = diags.len(), "publishing diagnostics");
+
     let params = PublishDiagnosticsParams {
         uri: uri.clone(),
         diagnostics: diags,
@@ -229,10 +233,14 @@ pub fn load_tag_path(tag_index: &mut TagIndex, path: &Path) {
     if path.is_dir() {
         let tags_file = path.join("tags");
         if tags_file.exists() {
-            let _ = tag_index.load_tags_file(&tags_file);
+            if let Err(e) = tag_index.load_tags_file(&tags_file) {
+                tracing::warn!(path = %tags_file.display(), error = %e, "failed to load tags file");
+            }
         }
     } else if path.exists() {
-        let _ = tag_index.load_tags_file(path);
+        if let Err(e) = tag_index.load_tags_file(path) {
+            tracing::warn!(path = %path.display(), error = %e, "failed to load tags file");
+        }
     }
 }
 
