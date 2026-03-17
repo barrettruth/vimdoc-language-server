@@ -95,6 +95,102 @@ mod completion {
         let resp = handlers::handle_completion(&req, &store, &tag_index);
         assert_eq!(resp.result, Some(serde_json::Value::Null));
     }
+
+    #[test]
+    fn non_ascii_before_taglink_inside_returns_items() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        // "日本語 |" — 日(1)+本(1)+語(1)+' '(1) = 4 UTF-16 before '|' at col 4;
+        // col 5 is one past '|', i.e. inside the open taglink
+        store.open(uri.clone(), "*foo* heading\n日本語 |".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/completion".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 1, "character": 5 }
+            }),
+        };
+
+        let tag_index = TagIndex::default();
+        let resp = handlers::handle_completion(&req, &store, &tag_index);
+        let result: CompletionResponse = serde_json::from_value(resp.result.unwrap()).unwrap();
+        let labels: Vec<&str> = match &result {
+            CompletionResponse::Array(items) => items.iter().map(|i| i.label.as_str()).collect(),
+            CompletionResponse::List(_) => panic!("expected array"),
+        };
+        assert!(labels.contains(&"foo"));
+    }
+
+    #[test]
+    fn non_ascii_before_taglink_outside_returns_null() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        // cursor at UTF-16 col 2 — between 本 and 語, no '|' seen yet
+        store.open(uri.clone(), "*foo* heading\n日本語 plain\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/completion".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 1, "character": 2 }
+            }),
+        };
+
+        let tag_index = TagIndex::default();
+        let resp = handlers::handle_completion(&req, &store, &tag_index);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
+
+    #[test]
+    fn supplementary_plane_before_taglink_inside_returns_items() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        // "𝄞 |" — 𝄞 is U+1D11E: 2 UTF-16 units, 4 bytes;
+        // ' '=1 UTF-16; '|' at col 3; col 4 is inside the open taglink
+        store.open(uri.clone(), "*foo* heading\n𝄞 |".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/completion".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 1, "character": 4 }
+            }),
+        };
+
+        let tag_index = TagIndex::default();
+        let resp = handlers::handle_completion(&req, &store, &tag_index);
+        let result: CompletionResponse = serde_json::from_value(resp.result.unwrap()).unwrap();
+        match &result {
+            CompletionResponse::Array(items) => assert!(!items.is_empty()),
+            CompletionResponse::List(_) => panic!("expected array"),
+        }
+    }
+
+    #[test]
+    fn cursor_at_pipe_boundary_not_inside() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        // "日本語 |foo|" — '|' (opening) at UTF-16 col 4;
+        // cursor AT col 4 is just before '|', so pipes seen = 0 → not inside
+        store.open(uri.clone(), "*foo* heading\n日本語 |foo|\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/completion".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 1, "character": 4 }
+            }),
+        };
+
+        let tag_index = TagIndex::default();
+        let resp = handlers::handle_completion(&req, &store, &tag_index);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
 }
 
 mod definition {

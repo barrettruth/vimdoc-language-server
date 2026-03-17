@@ -64,6 +64,10 @@ pub fn format_document(text: &str, line_width: usize) -> String {
     result
 }
 
+fn utf16_len(s: &str) -> usize {
+    s.chars().map(char::len_utf16).sum()
+}
+
 fn utf16_col_to_byte(s: &str, utf16: usize) -> usize {
     let mut col = 0usize;
     for (byte_pos, ch) in s.char_indices() {
@@ -91,11 +95,14 @@ fn format_heading(raw: &str, pl: &crate::parser::ParsedLine, line_width: usize) 
         .collect::<Vec<_>>()
         .join(" ");
 
-    if left.len() + 1 + right.len() >= line_width {
+    let left_w = utf16_len(left);
+    let right_w = utf16_len(&right);
+
+    if left_w + 1 + right_w >= line_width {
         return format!("{left} {right}");
     }
 
-    let spaces = line_width - left.len() - right.len();
+    let spaces = line_width - left_w - right_w;
     format!("{left}{}{right}", " ".repeat(spaces))
 }
 
@@ -109,15 +116,20 @@ fn reflow_words(words: &[&str], line_width: usize, out: &mut Vec<String>) {
         return;
     }
     let mut line = String::new();
+    let mut line_w = 0_usize;
     for word in words {
+        let word_w = utf16_len(word);
         if line.is_empty() {
             line.push_str(word);
-        } else if line.len() + 1 + word.len() <= line_width {
+            line_w = word_w;
+        } else if line_w + 1 + word_w <= line_width {
             line.push(' ');
             line.push_str(word);
+            line_w += 1 + word_w;
         } else {
             out.push(line);
             line = word.to_string();
+            line_w = word_w;
         }
     }
     if !line.is_empty() {
@@ -179,5 +191,35 @@ mod tests {
     fn heading_tag_fallback_when_line_too_long() {
         let result = format_document("A very long heading        *tag*\n", 20);
         assert_eq!(result, "A very long heading *tag*\n");
+    }
+
+    #[test]
+    fn heading_alignment_non_ascii_left() {
+        let result = format_document("café *foo*\n", 20);
+        assert_eq!(result, format!("café{}*foo*\n", " ".repeat(11)));
+    }
+
+    #[test]
+    fn heading_alignment_supplementary_plane_left() {
+        let result = format_document("𝄞 *foo*\n", 20);
+        assert_eq!(result, format!("𝄞{}*foo*\n", " ".repeat(13)));
+    }
+
+    #[test]
+    fn reflow_non_ascii_fits_in_width() {
+        let result = format_document("naïve\nfix\n", 9);
+        assert_eq!(result, "naïve fix\n");
+    }
+
+    #[test]
+    fn reflow_non_ascii_wraps_correctly() {
+        let result = format_document("naïve approach\n", 9);
+        assert_eq!(result, "naïve\napproach\n");
+    }
+
+    #[test]
+    fn reflow_supplementary_plane_fits_in_width() {
+        let result = format_document("𝄞a\nbc\n", 6);
+        assert_eq!(result, "𝄞a bc\n");
     }
 }
