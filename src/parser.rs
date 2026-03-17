@@ -111,7 +111,7 @@ fn scan_inline(line_num: u32, raw: &str) -> (Vec<Span>, Vec<Span>) {
         match bytes[i] {
             b'*' => {
                 if let Some((name, end)) = scan_delimited(raw, i + 1, b'*') {
-                    tag_defs.push(make_span(line_num, i, end, name));
+                    tag_defs.push(make_span(raw, line_num, i, end, name));
                     i = end;
                 } else {
                     i += 1;
@@ -119,7 +119,7 @@ fn scan_inline(line_num: u32, raw: &str) -> (Vec<Span>, Vec<Span>) {
             }
             b'|' => {
                 if let Some((name, end)) = scan_delimited(raw, i + 1, b'|') {
-                    tag_refs.push(make_span(line_num, i, end, name));
+                    tag_refs.push(make_span(raw, line_num, i, end, name));
                     i = end;
                 } else {
                     i += 1;
@@ -142,17 +142,22 @@ fn scan_inline(line_num: u32, raw: &str) -> (Vec<Span>, Vec<Span>) {
 }
 
 #[allow(clippy::cast_possible_truncation)]
-fn make_span(line_num: u32, start: usize, end: usize, name: String) -> Span {
+fn byte_offset_to_utf16(s: &str, byte_pos: usize) -> u32 {
+    s[..byte_pos].chars().map(char::len_utf16).sum::<usize>() as u32
+}
+
+#[allow(clippy::cast_possible_truncation)]
+fn make_span(raw: &str, line_num: u32, start: usize, end: usize, name: String) -> Span {
     Span {
         name,
         range: Range {
             start: Position {
                 line: line_num,
-                character: start as u32,
+                character: byte_offset_to_utf16(raw, start),
             },
             end: Position {
                 line: line_num,
-                character: end as u32,
+                character: byte_offset_to_utf16(raw, end),
             },
         },
     }
