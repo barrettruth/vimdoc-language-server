@@ -27,7 +27,7 @@ pub struct ParsedLine {
     pub tag_refs: Vec<Span>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Document {
     pub lines: Vec<ParsedLine>,
 }
