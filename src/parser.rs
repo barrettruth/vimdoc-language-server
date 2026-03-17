@@ -234,4 +234,28 @@ mod tests {
         let doc = Document::parse("* not a tag *");
         assert_eq!(doc.tag_defs().count(), 0);
     }
+
+    #[test]
+    fn utf16_multibyte_before_tag_def() {
+        let doc = Document::parse("日本語 *foo*");
+        let span = doc.tag_defs().next().unwrap();
+        assert_eq!(span.range.start.character, 4);
+        assert_eq!(span.range.end.character, 9);
+    }
+
+    #[test]
+    fn utf16_supplementary_plane_before_tag_ref() {
+        let doc = Document::parse("𝄞 |bar|");
+        let span = doc.tag_refs().next().unwrap();
+        assert_eq!(span.range.start.character, 3);
+        assert_eq!(span.range.end.character, 8);
+    }
+
+    #[test]
+    fn utf16_ascii_unaffected() {
+        let doc = Document::parse("hello *baz*");
+        let span = doc.tag_defs().next().unwrap();
+        assert_eq!(span.range.start.character, 6);
+        assert_eq!(span.range.end.character, 11);
+    }
 }
