@@ -573,7 +573,9 @@ fn handle_hover(req: &lsp_server::Request, store: &Store, tag_index: &mut TagInd
             return Ok(None);
         };
 
-        let context = extract_hover_context(&text, def_range.start.line);
+        let Some(context) = extract_hover_context(&text, def_range.start.line) else {
+            return Ok(None);
+        };
 
         Ok(Some(Hover {
             contents: HoverContents::Markup(MarkupContent {
@@ -721,12 +723,15 @@ fn collect_rename_edits(
     }
 }
 
-fn extract_hover_context(text: &str, line: u32) -> String {
+fn extract_hover_context(text: &str, line: u32) -> Option<String> {
     let lines: Vec<&str> = text.lines().collect();
     let line = line as usize;
+    if line >= lines.len() {
+        return None;
+    }
     let start = line.saturating_sub(1);
     let end = (line + 4).min(lines.len());
-    lines[start..end].join("\n")
+    Some(lines[start..end].join("\n"))
 }
 
 fn tag_name_at(doc: &Document, pos: Position) -> Option<String> {
