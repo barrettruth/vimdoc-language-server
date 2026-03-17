@@ -819,7 +819,7 @@ fn handle_notification(
                 tag_index.update_file(&uri, doc);
             }
             if config.diagnostics {
-                push_diagnostics(connection, &uri, store)?;
+                push_diagnostics(connection, &uri, store, tag_index)?;
             }
         }
         DidChangeTextDocument::METHOD => {
@@ -837,7 +837,7 @@ fn handle_notification(
                 tag_index.update_file(&uri, doc);
             }
             if config.diagnostics {
-                push_diagnostics(connection, &uri, store)?;
+                push_diagnostics(connection, &uri, store, tag_index)?;
             }
         }
         DidCloseTextDocument::METHOD => {
@@ -850,10 +850,15 @@ fn handle_notification(
     Ok(())
 }
 
-fn push_diagnostics(connection: &Connection, uri: &Uri, store: &Store) -> Result<()> {
+fn push_diagnostics(
+    connection: &Connection,
+    uri: &Uri,
+    store: &Store,
+    tag_index: &TagIndex,
+) -> Result<()> {
     let diags = store
         .get(uri)
-        .map(|(_t, doc)| diagnostics::compute(doc))
+        .map(|(_t, doc)| diagnostics::compute(doc, tag_index))
         .unwrap_or_default();
 
     let params = PublishDiagnosticsParams {

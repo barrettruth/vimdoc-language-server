@@ -55,6 +55,11 @@ impl TagIndex {
         self.workspace_docs.remove(uri);
     }
 
+    #[must_use]
+    pub fn contains(&self, name: &str) -> bool {
+        self.workspace.contains_key(name) || self.external.contains_key(name)
+    }
+
     pub fn all_tag_names(&self) -> impl Iterator<Item = &str> {
         self.workspace
             .keys()
