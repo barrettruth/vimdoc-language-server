@@ -1,5 +1,8 @@
 pub mod diagnostics;
 pub mod formatter;
+pub mod handlers;
 pub mod parser;
+pub mod server;
+pub mod shared;
 pub mod store;
 pub mod tags;
