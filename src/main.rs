@@ -61,9 +61,12 @@ struct Cli {
     no_runtime_tags: bool,
 }
 
+#[allow(clippy::struct_excessive_bools)]
 struct Config {
     line_width: usize,
+    formatting: bool,
     diagnostics: bool,
+    hover: bool,
     runtime_tags: bool,
     tag_paths: Vec<PathBuf>,
 }
@@ -83,7 +86,9 @@ impl Config {
 
         Self {
             line_width: cli.line_width,
+            formatting: !cli.no_formatting,
             diagnostics: !cli.no_diagnostics,
+            hover: !cli.no_hover,
             runtime_tags: init_opts.runtime_tags.unwrap_or(!cli.no_runtime_tags),
             tag_paths,
         }
@@ -114,7 +119,11 @@ fn main() -> Result<()> {
             prepare_provider: Some(true),
             work_done_progress_options: lsp_types::WorkDoneProgressOptions::default(),
         })),
-        hover_provider: Some(lsp_types::HoverProviderCapability::Simple(true)),
+        hover_provider: if cli.no_hover {
+            None
+        } else {
+            Some(lsp_types::HoverProviderCapability::Simple(true))
+        },
         document_highlight_provider: Some(OneOf::Left(true)),
         folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
@@ -251,14 +260,14 @@ fn handle_request(
     tag_index: &mut TagIndex,
 ) -> Response {
     match req.method.as_str() {
-        Formatting::METHOD => handle_formatting(req, store, config),
+        Formatting::METHOD if config.formatting => handle_formatting(req, store, config),
         DocumentSymbolRequest::METHOD => handle_document_symbol(req, store),
         GotoDefinition::METHOD => handle_goto_definition(req, store, tag_index),
         DocumentHighlightRequest::METHOD => handle_document_highlight(req, store),
         FoldingRangeRequest::METHOD => handle_folding_range(req, store),
         DocumentLinkRequest::METHOD => handle_document_link(req, store, tag_index),
         Completion::METHOD => handle_completion(req, store, tag_index),
-        HoverRequest::METHOD => handle_hover(req, store, tag_index),
+        HoverRequest::METHOD if config.hover => handle_hover(req, store, tag_index),
         References::METHOD => handle_references(req, store, tag_index),
         Rename::METHOD => handle_rename(req, store, tag_index),
         "textDocument/prepareRename" => handle_prepare_rename(req, store),
