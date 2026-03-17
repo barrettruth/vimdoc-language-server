@@ -62,6 +62,10 @@ impl TagIndex {
             .map(String::as_str)
     }
 
+    pub fn workspace_docs(&self) -> impl Iterator<Item = (&Uri, &Document)> {
+        self.workspace_docs.iter()
+    }
+
     #[must_use]
     pub fn find_references(&self, name: &str) -> Vec<TagEntry> {
         let mut refs = Vec::new();

@@ -9,14 +9,14 @@ use lsp_types::{
     FoldingRangeKind, GotoDefinitionResponse, Hover, HoverContents, InitializeParams, Location,
     MarkupContent, MarkupKind, OneOf, Position, PublishDiagnosticsParams, Range,
     ServerCapabilities, SymbolKind, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit,
-    Uri,
+    Uri, WorkspaceEdit,
     notification::{
         DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument,
         Notification as LspNotification, PublishDiagnostics,
     },
     request::{
         Completion, DocumentHighlightRequest, DocumentLinkRequest, DocumentSymbolRequest,
-        FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest, References,
+        FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest, References, Rename,
         Request as LspRequest,
     },
 };
@@ -110,6 +110,10 @@ fn main() -> Result<()> {
         document_symbol_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         references_provider: Some(OneOf::Left(true)),
+        rename_provider: Some(OneOf::Right(lsp_types::RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: lsp_types::WorkDoneProgressOptions::default(),
+        })),
         hover_provider: Some(lsp_types::HoverProviderCapability::Simple(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
@@ -222,6 +226,8 @@ fn handle_request(
         Completion::METHOD => handle_completion(req, store, tag_index),
         HoverRequest::METHOD => handle_hover(req, store, tag_index),
         References::METHOD => handle_references(req, store, tag_index),
+        Rename::METHOD => handle_rename(req, store, tag_index),
+        "textDocument/prepareRename" => handle_prepare_rename(req, store),
         _ => Response {
             id: req.id.clone(),
             result: None,
@@ -578,6 +584,107 @@ fn handle_references(req: &lsp_server::Request, store: &Store, tag_index: &TagIn
         Ok(Some(locations))
     })();
     make_response(req, result)
+}
+
+fn handle_prepare_rename(req: &lsp_server::Request, store: &Store) -> Response {
+    let result = (|| -> Result<Option<lsp_types::PrepareRenameResponse>> {
+        let params: lsp_types::TextDocumentPositionParams =
+            serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document.uri;
+        let pos = params.position;
+        let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+
+        let span = find_span_at(doc.tag_defs(), pos).or_else(|| find_span_at(doc.tag_refs(), pos));
+
+        Ok(span.map(|s| lsp_types::PrepareRenameResponse::Range(s.range)))
+    })();
+    make_response(req, result)
+}
+
+#[allow(clippy::similar_names)]
+fn handle_rename(req: &lsp_server::Request, store: &Store, tag_index: &TagIndex) -> Response {
+    let result = (|| -> Result<Option<WorkspaceEdit>> {
+        let params: lsp_types::RenameParams = serde_json::from_value(req.params.clone())?;
+        let uri = params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+        let new_name = params.new_name;
+        let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
+
+        let span = find_span_at(doc.tag_defs(), pos).or_else(|| find_span_at(doc.tag_refs(), pos));
+
+        let Some(span) = span else {
+            return Ok(None);
+        };
+        let old_name = span.name.clone();
+        let is_def = doc.tag_defs().any(|d| d.name == old_name);
+
+        let new_def_text = format!("*{new_name}*");
+        let new_ref_text = format!("|{new_name}|");
+
+        #[allow(clippy::mutable_key_type)]
+        let mut changes: std::collections::HashMap<Uri, Vec<TextEdit>> =
+            std::collections::HashMap::new();
+
+        collect_rename_edits(
+            doc,
+            &uri,
+            &old_name,
+            &new_def_text,
+            &new_ref_text,
+            &mut changes,
+        );
+
+        if is_def {
+            for (ws_uri, ws_doc) in tag_index.workspace_docs() {
+                if *ws_uri != uri {
+                    collect_rename_edits(
+                        ws_doc,
+                        ws_uri,
+                        &old_name,
+                        &new_def_text,
+                        &new_ref_text,
+                        &mut changes,
+                    );
+                }
+            }
+        }
+
+        Ok(Some(WorkspaceEdit {
+            changes: Some(changes),
+            ..WorkspaceEdit::default()
+        }))
+    })();
+    make_response(req, result)
+}
+
+#[allow(clippy::mutable_key_type, clippy::similar_names)]
+fn collect_rename_edits(
+    doc: &Document,
+    uri: &Uri,
+    old_name: &str,
+    new_def_text: &str,
+    new_ref_text: &str,
+    changes: &mut std::collections::HashMap<Uri, Vec<TextEdit>>,
+) {
+    let edits: Vec<TextEdit> = doc
+        .tag_defs()
+        .filter(|d| d.name == old_name)
+        .map(|d| TextEdit {
+            range: d.range,
+            new_text: new_def_text.to_string(),
+        })
+        .chain(
+            doc.tag_refs()
+                .filter(|r| r.name == old_name)
+                .map(|r| TextEdit {
+                    range: r.range,
+                    new_text: new_ref_text.to_string(),
+                }),
+        )
+        .collect();
+    if !edits.is_empty() {
+        changes.entry(uri.clone()).or_default().extend(edits);
+    }
 }
 
 fn extract_hover_context(text: &str, line: u32) -> String {
