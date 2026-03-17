@@ -1,0 +1,23 @@
+mod completion;
+mod definition;
+mod document_link;
+mod document_symbol;
+mod folding_range;
+mod formatting;
+mod highlight;
+mod hover;
+mod prepare_rename;
+mod references;
+mod rename;
+
+pub use completion::handle_completion;
+pub use definition::handle_goto_definition;
+pub use document_link::handle_document_link;
+pub use document_symbol::handle_document_symbol;
+pub use folding_range::handle_folding_range;
+pub use formatting::handle_formatting;
+pub use highlight::handle_document_highlight;
+pub use hover::handle_hover;
+pub use prepare_rename::handle_prepare_rename;
+pub use references::handle_references;
+pub use rename::handle_rename;
