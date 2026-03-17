@@ -176,6 +176,20 @@ mod tests {
     }
 
     #[test]
+    fn preserves_code_fence_with_language() {
+        let input = "prose\n>lua\n    code()\n<\nafter\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn prose_not_merged_into_code_fence() {
+        let input = "This is prose.\n>lua\n    code()\n<\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
     fn heading_tag_fallback_when_line_too_long() {
         let result = format_document("A very long heading        *tag*\n", 20);
         assert_eq!(result, "A very long heading *tag*\n");
