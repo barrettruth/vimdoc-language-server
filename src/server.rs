@@ -150,7 +150,7 @@ fn push_diagnostics(
 ) -> Result<()> {
     let diags = store
         .get(uri)
-        .map(|(_t, doc)| diagnostics::compute(doc, tag_index))
+        .map(|(_t, doc)| diagnostics::compute(doc, tag_index, uri))
         .unwrap_or_default();
 
     tracing::debug!(uri = %uri.as_str(), count = diags.len(), "publishing diagnostics");

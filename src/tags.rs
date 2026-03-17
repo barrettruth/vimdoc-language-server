@@ -72,6 +72,13 @@ impl TagIndex {
         self.workspace.get(name)
     }
 
+    #[must_use]
+    pub fn has_definition_in_other_file(&self, name: &str, current: &Uri) -> bool {
+        self.workspace
+            .get(name)
+            .is_some_and(|entries| entries.iter().any(|e| &e.uri != current))
+    }
+
     pub fn workspace_docs(&self) -> impl Iterator<Item = (&Uri, &Document)> {
         self.workspace_docs.iter()
     }
