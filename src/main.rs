@@ -457,17 +457,33 @@ fn handle_folding_range(req: &lsp_server::Request, store: &Store) -> Response {
         }
 
         #[allow(clippy::cast_possible_truncation)]
-        if let Some(start) = section_start {
-            let end = (total - 1) as u32;
-            if end > start {
-                ranges.push(FoldingRange {
-                    start_line: start,
-                    start_character: None,
-                    end_line: end,
-                    end_character: None,
-                    kind: Some(FoldingRangeKind::Region),
-                    collapsed_text: None,
-                });
+        {
+            if let Some(start) = code_start {
+                let end = (total - 1) as u32;
+                if end > start {
+                    ranges.push(FoldingRange {
+                        start_line: start,
+                        start_character: None,
+                        end_line: end,
+                        end_character: None,
+                        kind: Some(FoldingRangeKind::Region),
+                        collapsed_text: None,
+                    });
+                }
+            }
+
+            if let Some(start) = section_start {
+                let end = (total - 1) as u32;
+                if end > start {
+                    ranges.push(FoldingRange {
+                        start_line: start,
+                        start_character: None,
+                        end_line: end,
+                        end_character: None,
+                        kind: Some(FoldingRangeKind::Region),
+                        collapsed_text: None,
+                    });
+                }
             }
         }
 
