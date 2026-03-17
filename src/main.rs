@@ -767,9 +767,9 @@ fn handle_notification(
             let text = params
                 .content_changes
                 .into_iter()
-                .next()
-                .map(|c| c.text)
-                .unwrap_or_default();
+                .last()
+                .ok_or_else(|| anyhow!("empty content changes"))?
+                .text;
             store.change(&uri, text);
             if let Some((_text, doc)) = store.get(&uri) {
                 tag_index.update_file(&uri, doc);
