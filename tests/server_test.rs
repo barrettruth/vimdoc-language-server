@@ -2,7 +2,7 @@ use lsp_server::{Connection, Message, Notification, Request};
 use serde_json::json;
 use std::thread::{self, JoinHandle};
 use vimdoc_language_server::{
-    server::{Config, main_loop},
+    server::{Config, load_tag_path, main_loop},
     tags::TagIndex,
 };
 
@@ -18,13 +18,12 @@ fn default_config() -> Config {
 }
 
 #[allow(clippy::missing_panics_doc)]
-fn spawn_server(config: Config) -> (Connection, JoinHandle<()>) {
+fn spawn_server_with_tags(config: Config, mut tag_index: TagIndex) -> (Connection, JoinHandle<()>) {
     let (server_conn, client_conn) = Connection::memory();
     let handle = thread::spawn(move || {
         server_conn
             .initialize(json!({}))
             .expect("initialize failed");
-        let mut tag_index = TagIndex::default();
         main_loop(&server_conn, &config, &mut tag_index).expect("main_loop failed");
     });
     client_conn
@@ -47,6 +46,11 @@ fn spawn_server(config: Config) -> (Connection, JoinHandle<()>) {
         }))
         .expect("send initialized");
     (client_conn, handle)
+}
+
+#[allow(clippy::missing_panics_doc)]
+fn spawn_server(config: Config) -> (Connection, JoinHandle<()>) {
+    spawn_server_with_tags(config, TagIndex::default())
 }
 
 #[allow(clippy::missing_panics_doc, clippy::needless_pass_by_value)]
@@ -290,6 +294,155 @@ fn hover_disabled_returns_error() {
         other => panic!("expected response, got {other:?}"),
     };
     assert!(resp.error.is_some());
+
+    shutdown(conn, handle);
+}
+
+#[test]
+fn no_diagnostics_suppresses_notification() {
+    let config = Config {
+        diagnostics: false,
+        ..default_config()
+    };
+    let (conn, handle) = spawn_server(config);
+    let uri = "file:///test.txt";
+
+    conn.sender
+        .send(Message::Notification(Notification {
+            method: "textDocument/didOpen".into(),
+            params: json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vimdoc",
+                    "version": 1,
+                    "text": "*dup* a\n*dup* b\n"
+                }
+            }),
+        }))
+        .expect("send didOpen");
+
+    conn.sender
+        .send(Message::Request(Request {
+            id: 2.into(),
+            method: "textDocument/documentSymbol".into(),
+            params: json!({"textDocument": {"uri": uri}}),
+        }))
+        .expect("send documentSymbol");
+
+    let msg = conn.receiver.recv().expect("recv");
+    match msg {
+        Message::Response(r) => {
+            let symbols: Vec<serde_json::Value> =
+                serde_json::from_value(r.result.unwrap()).unwrap();
+            assert_eq!(symbols.len(), 2);
+        }
+        Message::Notification(n) if n.method == "textDocument/publishDiagnostics" => {
+            panic!("unexpected diagnostics notification when diagnostics disabled");
+        }
+        other => panic!("unexpected message: {other:?}"),
+    }
+
+    shutdown(conn, handle);
+}
+
+#[test]
+fn line_width_affects_formatting() {
+    let config = Config {
+        line_width: 20,
+        ..default_config()
+    };
+    let (conn, handle) = spawn_server(config);
+    let uri = "file:///test.txt";
+
+    conn.sender
+        .send(Message::Notification(Notification {
+            method: "textDocument/didOpen".into(),
+            params: json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vimdoc",
+                    "version": 1,
+                    "text": "==========\n"
+                }
+            }),
+        }))
+        .expect("send didOpen");
+
+    conn.sender
+        .send(Message::Request(Request {
+            id: 2.into(),
+            method: "textDocument/formatting".into(),
+            params: json!({
+                "textDocument": {"uri": uri},
+                "options": {"tabSize": 4, "insertSpaces": true}
+            }),
+        }))
+        .expect("send formatting");
+
+    let resp = match conn.receiver.recv().expect("recv formatting response") {
+        Message::Response(r) => r,
+        other => panic!("expected response, got {other:?}"),
+    };
+    let edits: Vec<serde_json::Value> = serde_json::from_value(resp.result.unwrap()).unwrap();
+    assert_eq!(edits.len(), 1);
+    assert_eq!(
+        edits[0]["newText"].as_str().unwrap(),
+        "====================\n"
+    );
+
+    shutdown(conn, handle);
+}
+
+#[test]
+fn tag_path_resolves_external_definition() {
+    use std::fs;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().unwrap();
+    fs::write(dir.path().join("ext.txt"), "*ext-feature* heading\n").unwrap();
+    fs::write(
+        dir.path().join("tags"),
+        "ext-feature\text.txt\t/*ext-feature*\n",
+    )
+    .unwrap();
+
+    let mut tag_index = TagIndex::default();
+    load_tag_path(&mut tag_index, dir.path());
+
+    let (conn, handle) = spawn_server_with_tags(default_config(), tag_index);
+    let uri = "file:///ref.txt";
+
+    conn.sender
+        .send(Message::Notification(Notification {
+            method: "textDocument/didOpen".into(),
+            params: json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vimdoc",
+                    "version": 1,
+                    "text": "|ext-feature| see here\n"
+                }
+            }),
+        }))
+        .expect("send didOpen");
+
+    conn.sender
+        .send(Message::Request(Request {
+            id: 2.into(),
+            method: "textDocument/definition".into(),
+            params: json!({
+                "textDocument": {"uri": uri},
+                "position": {"line": 0, "character": 2}
+            }),
+        }))
+        .expect("send definition");
+
+    let resp = match conn.receiver.recv().expect("recv definition response") {
+        Message::Response(r) => r,
+        other => panic!("expected response, got {other:?}"),
+    };
+    let result = resp.result.unwrap();
+    assert!(result["uri"].as_str().unwrap().contains("ext.txt"));
 
     shutdown(conn, handle);
 }
