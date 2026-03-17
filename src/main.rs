@@ -595,14 +595,15 @@ fn handle_hover(req: &lsp_server::Request, store: &Store, tag_index: &mut TagInd
             return Ok(None);
         };
 
-        let Some(context) = extract_hover_context(&text, def_range.start.line) else {
+        let def_doc = Document::parse(&text);
+        let Some(context) = extract_hover_context(&def_doc, &text, def_range.start.line) else {
             return Ok(None);
         };
 
         Ok(Some(Hover {
             contents: HoverContents::Markup(MarkupContent {
-                kind: MarkupKind::PlainText,
-                value: context,
+                kind: MarkupKind::Markdown,
+                value: format!("```vim\n{context}\n```"),
             }),
             range: None,
         }))
@@ -754,15 +755,26 @@ fn collect_rename_edits(
     }
 }
 
-fn extract_hover_context(text: &str, line: u32) -> Option<String> {
-    let lines: Vec<&str> = text.lines().collect();
+fn extract_hover_context(doc: &Document, text: &str, line: u32) -> Option<String> {
+    let text_lines: Vec<&str> = text.lines().collect();
     let line = line as usize;
-    if line >= lines.len() {
+    if line >= text_lines.len() || line >= doc.lines.len() {
         return None;
     }
-    let start = line.saturating_sub(1);
-    let end = (line + 4).min(lines.len());
-    Some(lines[start..end].join("\n"))
+
+    let start = line;
+
+    let mut end = line + 1;
+    let limit = text_lines.len().min(doc.lines.len());
+    while end < limit {
+        match doc.lines[end].kind {
+            LineKind::Separator(_) => break,
+            LineKind::Blank if end > line + 1 => break,
+            _ => end += 1,
+        }
+    }
+
+    Some(text_lines[start..end].join("\n"))
 }
 
 fn is_inside_taglink(text: &str, pos: Position) -> bool {
