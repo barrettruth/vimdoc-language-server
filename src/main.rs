@@ -185,8 +185,42 @@ fn load_tag_path(tag_index: &mut TagIndex, path: &Path) {
 }
 
 fn uri_to_path(uri: &Uri) -> Option<PathBuf> {
-    let s = uri.as_str();
-    s.strip_prefix("file://").map(PathBuf::from)
+    let s = uri.as_str().strip_prefix("file://")?;
+    Some(PathBuf::from(percent_decode(s)))
+}
+
+fn percent_decode(s: &str) -> String {
+    let mut out = Vec::with_capacity(s.len());
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Some(b) = hex_pair(bytes[i + 1], bytes[i + 2]) {
+                out.push(b);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8(out).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
+}
+
+fn hex_pair(hi: u8, lo: u8) -> Option<u8> {
+    let h = match hi {
+        b'0'..=b'9' => hi - b'0',
+        b'A'..=b'F' => hi - b'A' + 10,
+        b'a'..=b'f' => hi - b'a' + 10,
+        _ => return None,
+    };
+    let l = match lo {
+        b'0'..=b'9' => lo - b'0',
+        b'A'..=b'F' => lo - b'A' + 10,
+        b'a'..=b'f' => lo - b'a' + 10,
+        _ => return None,
+    };
+    Some(h << 4 | l)
 }
 
 fn main_loop(connection: &Connection, config: &Config, tag_index: &mut TagIndex) -> Result<()> {

@@ -181,9 +181,25 @@ fn path_to_uri(path: &Path) -> Result<Uri> {
     } else {
         std::env::current_dir()?.join(path)
     };
-    let url_str = format!("file://{}", abs.display());
-    url_str.parse::<Uri>().map_err(|e| anyhow!("{e}"))
+    let encoded = abs
+        .to_str()
+        .ok_or_else(|| anyhow!("non-UTF-8 path"))?
+        .bytes()
+        .fold(String::from("file://"), |mut s, b| {
+            if matches!(b, b'/' | b'-' | b'_' | b'.' | b'~' | b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z')
+            {
+                s.push(b as char);
+            } else {
+                s.push('%');
+                s.push(char::from(HEX[usize::from(b >> 4)]));
+                s.push(char::from(HEX[usize::from(b & 0xf)]));
+            }
+            s
+        });
+    encoded.parse::<Uri>().map_err(|e| anyhow!("{e}"))
 }
+
+const HEX: [u8; 16] = *b"0123456789ABCDEF";
 
 #[cfg(test)]
 mod tests {
