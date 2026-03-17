@@ -101,6 +101,26 @@ mod definition {
     use super::*;
 
     #[test]
+    fn cursor_not_on_tag_returns_null() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "plain text\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/definition".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 0, "character": 3 }
+            }),
+        };
+
+        let mut tag_index = TagIndex::default();
+        let resp = handlers::handle_goto_definition(&req, &store, &mut tag_index);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
+
+    #[test]
     fn resolves_same_file_ref() {
         let mut store = Store::default();
         let uri: Uri = "file:///test.txt".parse().unwrap();
@@ -215,6 +235,25 @@ mod definition {
 
 mod highlight {
     use super::*;
+
+    #[test]
+    fn cursor_not_on_tag_returns_null() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "plain text\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/documentHighlight".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 0, "character": 3 }
+            }),
+        };
+
+        let resp = handlers::handle_document_highlight(&req, &store);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
 
     #[test]
     fn def_and_refs_highlighted() {
@@ -354,6 +393,26 @@ mod hover {
     use super::*;
 
     #[test]
+    fn cursor_not_on_tag_returns_null() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "plain text\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/hover".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 0, "character": 3 }
+            }),
+        };
+
+        let mut tag_index = TagIndex::default();
+        let resp = handlers::handle_hover(&req, &store, &mut tag_index);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
+
+    #[test]
     fn shows_context_for_tag() {
         let mut store = Store::default();
         let uri: Uri = "file:///test.txt".parse().unwrap();
@@ -387,6 +446,27 @@ mod hover {
 
 mod references {
     use super::*;
+
+    #[test]
+    fn cursor_not_on_tag_returns_null() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "plain text\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/references".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 0, "character": 3 },
+                "context": { "includeDeclaration": false }
+            }),
+        };
+
+        let tag_index = TagIndex::default();
+        let resp = handlers::handle_references(&req, &store, &tag_index);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
 
     #[test]
     fn finds_refs_in_workspace() {
@@ -450,6 +530,27 @@ mod references {
 
 mod rename {
     use super::*;
+
+    #[test]
+    fn cursor_not_on_tag_returns_null() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "plain text\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/rename".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 0, "character": 3 },
+                "newName": "foo"
+            }),
+        };
+
+        let tag_index = TagIndex::default();
+        let resp = handlers::handle_rename(&req, &store, &tag_index);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
 
     #[test]
     fn renames_def_and_refs() {
@@ -532,6 +633,25 @@ mod prepare_rename {
     use super::*;
 
     #[test]
+    fn cursor_not_on_tag_returns_null() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "plain text\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/prepareRename".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 0, "character": 3 }
+            }),
+        };
+
+        let resp = handlers::handle_prepare_rename(&req, &store);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
+
+    #[test]
     fn returns_tag_range() {
         let mut store = Store::default();
         let uri: Uri = "file:///test.txt".parse().unwrap();
@@ -566,6 +686,34 @@ mod prepare_rename {
 
 mod formatting {
     use super::*;
+
+    #[test]
+    fn already_formatted_returns_null() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), format!("{}\n", "=".repeat(78)));
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/formatting".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "options": { "tabSize": 4, "insertSpaces": true }
+            }),
+        };
+
+        let config = Config {
+            line_width: 78,
+            formatting: true,
+            diagnostics: false,
+            hover: false,
+            runtime_tags: false,
+            tag_paths: vec![],
+        };
+
+        let resp = handlers::handle_formatting(&req, &store, &config);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
 
     #[test]
     fn normalizes_separator() {
