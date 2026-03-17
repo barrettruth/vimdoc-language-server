@@ -800,7 +800,10 @@ fn text_end_position(text: &str) -> Position {
             line += 1;
             character = 0;
         } else {
-            character += 1;
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                character += ch.len_utf16() as u32;
+            }
         }
     }
     Position { line, character }
