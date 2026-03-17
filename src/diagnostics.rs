@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use lsp_types::{Diagnostic, DiagnosticSeverity, NumberOrString, Range};
+use lsp_types::{Diagnostic, DiagnosticSeverity, NumberOrString, Range, Uri};
 
 use crate::parser::Document;
 use crate::tags::TagIndex;
 
 #[must_use]
-pub fn compute(doc: &Document, tag_index: &TagIndex) -> Vec<Diagnostic> {
+pub fn compute(doc: &Document, tag_index: &TagIndex, uri: &Uri) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let mut defined: HashMap<&str, Vec<Range>> = HashMap::new();
 
@@ -25,6 +25,18 @@ pub fn compute(doc: &Document, tag_index: &TagIndex) -> Vec<Diagnostic> {
                     severity: Some(DiagnosticSeverity::WARNING),
                     code: Some(NumberOrString::String("duplicate-tag".into())),
                     message: format!("duplicate tag definition: *{name}*"),
+                    source: Some("vimdoc".into()),
+                    ..Default::default()
+                });
+            }
+        }
+        if tag_index.has_definition_in_other_file(name, uri) {
+            for &range in ranges {
+                diags.push(Diagnostic {
+                    range,
+                    severity: Some(DiagnosticSeverity::WARNING),
+                    code: Some(NumberOrString::String("duplicate-tag".into())),
+                    message: format!("tag `*{name}*` is also defined in another file"),
                     source: Some("vimdoc".into()),
                     ..Default::default()
                 });

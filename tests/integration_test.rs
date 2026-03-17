@@ -752,9 +752,10 @@ mod diagnostics_tests {
 
     #[test]
     fn duplicate_tag_warning() {
+        let uri: Uri = "file:///test.txt".parse().unwrap();
         let doc = Document::parse("*foo* first\n*foo* second\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index);
+        let diags = diagnostics::compute(&doc, &tag_index, &uri);
 
         assert_eq!(diags.len(), 2);
         assert!(
@@ -766,9 +767,10 @@ mod diagnostics_tests {
 
     #[test]
     fn unresolved_ref_warning() {
+        let uri: Uri = "file:///test.txt".parse().unwrap();
         let doc = Document::parse("|missing| ref\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index);
+        let diags = diagnostics::compute(&doc, &tag_index, &uri);
 
         assert_eq!(diags.len(), 1);
         assert_eq!(
@@ -779,10 +781,28 @@ mod diagnostics_tests {
 
     #[test]
     fn resolved_ref_clean() {
+        let uri: Uri = "file:///test.txt".parse().unwrap();
         let doc = Document::parse("*foo* def\nsee |foo| here\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index);
+        let diags = diagnostics::compute(&doc, &tag_index, &uri);
 
         assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn cross_file_duplicate_tag_warning() {
+        let uri1: Uri = "file:///a.txt".parse().unwrap();
+        let uri2: Uri = "file:///b.txt".parse().unwrap();
+        let doc1 = Document::parse("*foo* heading\n");
+        let doc2 = Document::parse("*foo* other\n");
+        let mut tag_index = TagIndex::default();
+        tag_index.update_file(&uri2, &doc2);
+        let diags = diagnostics::compute(&doc1, &tag_index, &uri1);
+
+        assert_eq!(diags.len(), 1);
+        assert_eq!(
+            diags[0].code,
+            Some(NumberOrString::String("duplicate-tag".into()))
+        );
     }
 }

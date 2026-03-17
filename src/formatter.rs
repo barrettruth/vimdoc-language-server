@@ -64,8 +64,20 @@ pub fn format_document(text: &str, line_width: usize) -> String {
     result
 }
 
+fn utf16_col_to_byte(s: &str, utf16: usize) -> usize {
+    let mut col = 0usize;
+    for (byte_pos, ch) in s.char_indices() {
+        if col >= utf16 {
+            return byte_pos;
+        }
+        col += ch.len_utf16();
+    }
+    s.len()
+}
+
 fn format_heading(raw: &str, pl: &crate::parser::ParsedLine, line_width: usize) -> String {
-    let tag_start = pl.tag_defs[0].range.start.character as usize;
+    let tag_start_utf16 = pl.tag_defs[0].range.start.character as usize;
+    let tag_start = utf16_col_to_byte(raw, tag_start_utf16);
 
     if tag_start == 0 {
         return raw.trim_end().to_string();
