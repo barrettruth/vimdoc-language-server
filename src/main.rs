@@ -641,7 +641,7 @@ fn handle_prepare_rename(req: &lsp_server::Request, store: &Store) -> Response {
         let pos = params.position;
         let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
 
-        let span = find_span_at(doc.tag_defs(), pos).or_else(|| find_span_at(doc.tag_refs(), pos));
+        let span = find_span_at(doc.tag_refs(), pos).or_else(|| find_span_at(doc.tag_defs(), pos));
 
         Ok(span.map(|s| lsp_types::PrepareRenameResponse::Range(s.range)))
     })();
@@ -657,13 +657,22 @@ fn handle_rename(req: &lsp_server::Request, store: &Store, tag_index: &TagIndex)
         let new_name = params.new_name;
         let (_text, doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
 
-        let span = find_span_at(doc.tag_defs(), pos).or_else(|| find_span_at(doc.tag_refs(), pos));
+        if new_name.is_empty() || new_name.chars().any(char::is_whitespace) {
+            return Err(anyhow!(
+                "invalid tag name: must be non-empty with no whitespace"
+            ));
+        }
+
+        if tag_index.workspace_defs(&new_name).is_some() {
+            return Err(anyhow!("tag *{new_name}* already exists"));
+        }
+
+        let span = find_span_at(doc.tag_refs(), pos).or_else(|| find_span_at(doc.tag_defs(), pos));
 
         let Some(span) = span else {
             return Ok(None);
         };
         let old_name = span.name.clone();
-        let is_def = doc.tag_defs().any(|d| d.name == old_name);
 
         let new_def_text = format!("*{new_name}*");
         let new_ref_text = format!("|{new_name}|");
@@ -681,18 +690,16 @@ fn handle_rename(req: &lsp_server::Request, store: &Store, tag_index: &TagIndex)
             &mut changes,
         );
 
-        if is_def {
-            for (ws_uri, ws_doc) in tag_index.workspace_docs() {
-                if *ws_uri != uri {
-                    collect_rename_edits(
-                        ws_doc,
-                        ws_uri,
-                        &old_name,
-                        &new_def_text,
-                        &new_ref_text,
-                        &mut changes,
-                    );
-                }
+        for (ws_uri, ws_doc) in tag_index.workspace_docs() {
+            if *ws_uri != uri {
+                collect_rename_edits(
+                    ws_doc,
+                    ws_uri,
+                    &old_name,
+                    &new_def_text,
+                    &new_ref_text,
+                    &mut changes,
+                );
             }
         }
 
