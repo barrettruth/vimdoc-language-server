@@ -808,10 +808,10 @@ fn push_diagnostics(connection: &Connection, uri: &Uri, store: &Store) -> Result
 }
 
 fn make_response<T: serde::Serialize>(req: &lsp_server::Request, result: Result<T>) -> Response {
-    match result {
+    match result.and_then(|val| serde_json::to_value(val).map_err(Into::into)) {
         Ok(val) => Response {
             id: req.id.clone(),
-            result: serde_json::to_value(val).ok(),
+            result: Some(val),
             error: None,
         },
         Err(e) => Response {
