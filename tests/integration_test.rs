@@ -78,6 +78,37 @@ mod completion {
     }
 
     #[test]
+    fn multibyte_before_taglink_does_not_panic() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "*foo* heading\n😀|".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/completion".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "position": { "line": 1, "character": 3 }
+            }),
+        };
+
+        let tag_index = TagIndex::default();
+        let resp = handlers::handle_completion(&req, &store, &tag_index);
+        let result: CompletionResponse = serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let labels: Vec<&str> = match &result {
+            CompletionResponse::Array(items) => items.iter().map(|i| i.label.as_str()).collect(),
+            CompletionResponse::List(_) => panic!("expected array"),
+        };
+
+        let expected = expect![[r#"
+            [
+              "foo"
+            ]"#]];
+        expected.assert_eq(&serde_json::to_string_pretty(&labels).unwrap());
+    }
+
+    #[test]
     fn outside_taglink_returns_null() {
         let mut store = Store::default();
         let uri: Uri = "file:///test.txt".parse().unwrap();
