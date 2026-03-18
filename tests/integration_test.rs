@@ -753,6 +753,82 @@ mod formatting {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].new_text, "====================\n");
     }
+
+    #[test]
+    fn range_formatting_only_formats_selected_lines() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(
+            uri.clone(),
+            "untouched prose line\n==========\nafter\n".into(),
+        );
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/rangeFormatting".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "range": {
+                    "start": { "line": 1, "character": 0 },
+                    "end":   { "line": 1, "character": 10 }
+                },
+                "options": { "tabSize": 4, "insertSpaces": true }
+            }),
+        };
+
+        let config = Config {
+            line_width: 78,
+            formatting: true,
+            reflow: ReflowMode::Always,
+            normalize_spacing: false,
+            diagnostics: false,
+            hover: false,
+            runtime_tags: false,
+            tag_paths: vec![],
+        };
+
+        let resp = handlers::handle_range_formatting(&req, &store, &config);
+        let result: Vec<TextEdit> = serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].range.start.line, 1);
+        assert_eq!(result[0].range.end.line, 1);
+        assert_eq!(result[0].new_text, "=".repeat(78));
+    }
+
+    #[test]
+    fn range_formatting_returns_null_when_already_formatted() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), format!("{}\n", "=".repeat(78)));
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/rangeFormatting".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "range": {
+                    "start": { "line": 0, "character": 0 },
+                    "end":   { "line": 0, "character": 78 }
+                },
+                "options": { "tabSize": 4, "insertSpaces": true }
+            }),
+        };
+
+        let config = Config {
+            line_width: 78,
+            formatting: true,
+            reflow: ReflowMode::Always,
+            normalize_spacing: false,
+            diagnostics: false,
+            hover: false,
+            runtime_tags: false,
+            tag_paths: vec![],
+        };
+
+        let resp = handlers::handle_range_formatting(&req, &store, &config);
+        assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
 }
 
 mod diagnostics_tests {

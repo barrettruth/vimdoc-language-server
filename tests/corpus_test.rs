@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use lsp_types::Uri;
 use vimdoc_language_server::{
     diagnostics,
-    formatter::{format_document, FormatOptions},
+    formatter::{FormatOptions, format_document},
     parser::Document,
     tags::TagIndex,
 };

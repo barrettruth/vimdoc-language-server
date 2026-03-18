@@ -10,8 +10,8 @@ use lsp_types::{
     },
     request::{
         Completion, DocumentHighlightRequest, DocumentLinkRequest, DocumentSymbolRequest,
-        FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest, References, Rename,
-        Request as LspRequest,
+        FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest, RangeFormatting, References,
+        Rename, Request as LspRequest,
     },
 };
 use serde::Deserialize;
@@ -80,6 +80,9 @@ fn handle_request(
 ) -> Response {
     match req.method.as_str() {
         Formatting::METHOD if config.formatting => handlers::handle_formatting(req, store, config),
+        RangeFormatting::METHOD if config.formatting => {
+            handlers::handle_range_formatting(req, store, config)
+        }
         DocumentSymbolRequest::METHOD => handlers::handle_document_symbol(req, store),
         GotoDefinition::METHOD => handlers::handle_goto_definition(req, store, tag_index),
         DocumentHighlightRequest::METHOD => handlers::handle_document_highlight(req, store),

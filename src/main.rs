@@ -79,6 +79,11 @@ fn server_capabilities(cli: &Cli) -> ServerCapabilities {
         } else {
             Some(OneOf::Left(true))
         },
+        document_range_formatting_provider: if cli.no_formatting {
+            None
+        } else {
+            Some(OneOf::Left(true))
+        },
         document_symbol_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         references_provider: Some(OneOf::Left(true)),
