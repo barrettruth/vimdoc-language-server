@@ -35,20 +35,26 @@ pub fn format_document(text: &str, line_width: usize) -> String {
                 if pl.tag_defs.is_empty() {
                     let indent = leading_whitespace(raw_lines[i]);
                     if indent.is_empty() {
-                        let mut j = i;
-                        while j < n
-                            && doc.lines[j].kind == LineKind::Text
-                            && doc.lines[j].tag_defs.is_empty()
-                            && leading_whitespace(raw_lines[j]).is_empty()
-                        {
-                            j += 1;
+                        if raw_lines[i].contains('\t') {
+                            out.push(raw_lines[i].trim_end().to_string());
+                            i += 1;
+                        } else {
+                            let mut j = i;
+                            while j < n
+                                && doc.lines[j].kind == LineKind::Text
+                                && doc.lines[j].tag_defs.is_empty()
+                                && leading_whitespace(raw_lines[j]).is_empty()
+                                && !raw_lines[j].contains('\t')
+                            {
+                                j += 1;
+                            }
+                            let words: Vec<&str> = raw_lines[i..j]
+                                .iter()
+                                .flat_map(|l| l.split_whitespace())
+                                .collect();
+                            reflow_words(&words, line_width, &mut out);
+                            i = j;
                         }
-                        let words: Vec<&str> = raw_lines[i..j]
-                            .iter()
-                            .flat_map(|l| l.split_whitespace())
-                            .collect();
-                        reflow_words(&words, line_width, &mut out);
-                        i = j;
                     } else {
                         out.push(raw_lines[i].trim_end().to_string());
                         i += 1;
@@ -218,5 +224,27 @@ mod tests {
         let input = "* item text\n";
         let result = format_document(input, 78);
         assert_eq!(result, input);
+    }
+
+    #[test]
+    fn tab_command_ref_preserved() {
+        let input = "CTRL-V\t\tInsert next non-digit literally.\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn tab_line_not_merged_with_adjacent_prose() {
+        let input = "Prose before.\nCTRL-V\t\tDescription.\nProse after.\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn tab_idempotent() {
+        let input = "CTRL-V\t\tInsert next non-digit literally.\n\t\tcontinuation line.\n";
+        let once = format_document(input, 78);
+        let twice = format_document(&once, 78);
+        assert_eq!(once, twice);
     }
 }
