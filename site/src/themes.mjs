@@ -1,6 +1,7 @@
 export const midnight = {
   name: "midnight",
   type: "dark",
+  settings: [],
   colors: {
     "editor.background": "#222222",
     "editor.foreground": "#e0e0e0",
@@ -32,6 +33,7 @@ export const midnight = {
 export const daylight = {
   name: "daylight",
   type: "light",
+  settings: [],
   colors: {
     "editor.background": "#ebebeb",
     "editor.foreground": "#1a1a1a",
