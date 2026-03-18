@@ -148,9 +148,16 @@ fn main() -> Result<()> {
 
     let (connection, io_threads) = Connection::stdio();
 
-    let server_caps = serde_json::to_value(server_capabilities(&cli))?;
-    let init_params: InitializeParams =
-        serde_json::from_value(connection.initialize(server_caps)?)?;
+    let (init_id, init_params_value) = connection.initialize_start()?;
+    let init_result = serde_json::json!({
+        "capabilities": server_capabilities(&cli),
+        "serverInfo": {
+            "name": "vimdoc-language-server",
+            "version": env!("CARGO_PKG_VERSION"),
+        }
+    });
+    connection.initialize_finish(init_id, init_result)?;
+    let init_params: InitializeParams = serde_json::from_value(init_params_value)?;
 
     let init_opts: InitOptions = init_params
         .initialization_options
