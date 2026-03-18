@@ -27,6 +27,10 @@ pub fn format_document(text: &str, line_width: usize) -> String {
                 out.push(raw_lines[i].to_string());
                 i += 1;
             }
+            LineKind::ListItem => {
+                out.push(raw_lines[i].trim_end().to_string());
+                i += 1;
+            }
             LineKind::Text => {
                 if pl.tag_defs.is_empty() {
                     let indent = leading_whitespace(raw_lines[i]);
@@ -193,5 +197,26 @@ mod tests {
     fn heading_tag_fallback_when_line_too_long() {
         let result = format_document("A very long heading        *tag*\n", 20);
         assert_eq!(result, "A very long heading *tag*\n");
+    }
+
+    #[test]
+    fn list_items_not_merged() {
+        let input = "- item 1\n- item 2\n- item 3\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn list_item_not_merged_with_preceding_prose() {
+        let input = "Prose intro.\n- Item.\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn asterisk_list_item_preserved() {
+        let input = "* item text\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
     }
 }

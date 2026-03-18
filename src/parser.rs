@@ -17,6 +17,7 @@ pub enum LineKind {
     Blank,
     Separator(SepKind),
     CodeBody,
+    ListItem,
     Text,
 }
 
@@ -90,6 +91,10 @@ fn parse_line(line_num: u32, raw: &str, in_code: &mut bool) -> ParsedLine {
 
     if trimmed.ends_with('>') && !trimmed.ends_with("->") {
         *in_code = true;
+    }
+
+    if raw.starts_with("- ") || raw.starts_with("* ") || raw.starts_with("• ") {
+        return mk(LineKind::ListItem, tag_defs, tag_refs);
     }
 
     mk(LineKind::Text, tag_defs, tag_refs)
@@ -283,5 +288,31 @@ mod tests {
         let span = doc.tag_defs().next().unwrap();
         assert_eq!(span.range.start.character, 6);
         assert_eq!(span.range.end.character, 11);
+    }
+
+    #[test]
+    fn dash_list_item_is_list_item() {
+        let doc = Document::parse("- item text");
+        assert_eq!(doc.lines[0].kind, LineKind::ListItem);
+    }
+
+    #[test]
+    fn asterisk_list_item_is_list_item() {
+        let doc = Document::parse("* item text");
+        assert_eq!(doc.lines[0].kind, LineKind::ListItem);
+        assert_eq!(doc.tag_defs().count(), 0);
+    }
+
+    #[test]
+    fn tag_def_not_mistaken_for_list_item() {
+        let doc = Document::parse("*my-tag* some text");
+        assert_eq!(doc.lines[0].kind, LineKind::Text);
+        assert_eq!(doc.tag_defs().count(), 1);
+    }
+
+    #[test]
+    fn separator_not_mistaken_for_list_item() {
+        let doc = Document::parse(&"-".repeat(78));
+        assert_eq!(doc.lines[0].kind, LineKind::Separator(SepKind::Minor));
     }
 }
