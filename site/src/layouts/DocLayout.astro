@@ -1,4 +1,5 @@
 ---
+import "../styles/base.css";
 const fm = Astro.props.frontmatter || Astro.props;
 const title = fm.title;
 const description = fm.description || "vimdoc-language-server documentation";
@@ -12,7 +13,6 @@ const isIndex =
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <link rel="stylesheet" href="/styles/base.css" />
     <title>{title ? `${title} — vimdoc-ls` : "vimdoc-language-server"}</title>
   </head>
   <body>
