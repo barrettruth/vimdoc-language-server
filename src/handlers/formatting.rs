@@ -13,11 +13,14 @@ pub fn handle_formatting(req: &lsp_server::Request, store: &Store, config: &Conf
             serde_json::from_value(req.params.clone())?;
         let uri = params.text_document.uri;
         let (text, _doc) = store.get(&uri).ok_or_else(|| anyhow!("unknown uri"))?;
-        let new_text = formatter::format_document(text, &FormatOptions {
-            line_width: config.line_width,
-            reflow: config.reflow,
-            normalize_spacing: config.normalize_spacing,
-        });
+        let new_text = formatter::format_document(
+            text,
+            &FormatOptions {
+                line_width: config.line_width,
+                reflow: config.reflow,
+                normalize_spacing: config.normalize_spacing,
+            },
+        );
         if new_text == text {
             return Ok(None);
         }
