@@ -15,8 +15,8 @@ the vimdoc format.
 A line consisting entirely of `=` or `-` characters, with a minimum length of
 10, is a separator.
 
-| Kind  | Character | Minimum length | `LineKind`              |
-| ----- | --------- | -------------- | ----------------------- |
+| Kind  | Character | Minimum length | `LineKind`                  |
+| ----- | --------- | -------------- | --------------------------- |
 | Major | `=`       | 10             | `Separator(SepKind::Major)` |
 | Minor | `-`       | 10             | `Separator(SepKind::Minor)` |
 
@@ -100,12 +100,12 @@ next non-blank line is indented.
 Lines recognized as list items are preserved as-is and not reflowed together
 with adjacent prose.
 
-| Prefix | Kind                             |
-| ------ | -------------------------------- |
-| `- `   | Unordered (dash)                 |
-| `* `   | Unordered (asterisk)             |
-| `• `   | Unordered (Unicode bullet U+2022)|
-| `N. `  | Ordered (N = one or more digits) |
+| Prefix | Kind                              |
+| ------ | --------------------------------- |
+| `- `   | Unordered (dash)                  |
+| `* `   | Unordered (asterisk)              |
+| `• `   | Unordered (Unicode bullet U+2022) |
+| `N. `  | Ordered (N = one or more digits)  |
 
 **Disambiguation rules:**
 
