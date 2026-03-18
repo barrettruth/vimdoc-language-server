@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use lsp_types::Uri;
 use vimdoc_language_server::{
-    diagnostics, formatter::format_document, parser::Document, tags::TagIndex,
+    diagnostics,
+    formatter::{format_document, FormatOptions},
+    parser::Document,
+    tags::TagIndex,
 };
 
 fn find_vimruntime() -> Option<PathBuf> {
@@ -78,8 +81,9 @@ fn formatter_idempotent_on_neovim_corpus() {
 
     for path in &files {
         let text = std::fs::read_to_string(path).expect("read file");
-        let once = format_document(&text, 78);
-        let twice = format_document(&once, 78);
+        let opts = FormatOptions::default();
+        let once = format_document(&text, &opts);
+        let twice = format_document(&once, &opts);
         assert_eq!(once, twice, "formatter not idempotent on {path:?}");
     }
 }

@@ -17,6 +17,7 @@ use lsp_types::{
 use serde::Deserialize;
 
 use crate::diagnostics;
+use crate::formatter::ReflowMode;
 use crate::handlers;
 use crate::store::Store;
 use crate::tags::TagIndex;
@@ -25,6 +26,8 @@ use crate::tags::TagIndex;
 pub struct Config {
     pub line_width: usize,
     pub formatting: bool,
+    pub reflow: ReflowMode,
+    pub normalize_spacing: bool,
     pub diagnostics: bool,
     pub hover: bool,
     pub runtime_tags: bool,
@@ -37,6 +40,12 @@ pub struct InitOptions {
     #[serde(default)]
     pub tag_paths: Vec<PathBuf>,
     pub runtime_tags: Option<bool>,
+    pub line_width: Option<usize>,
+    pub formatting: Option<bool>,
+    pub diagnostics: Option<bool>,
+    pub hover: Option<bool>,
+    pub reflow: Option<ReflowMode>,
+    pub normalize_spacing: Option<bool>,
 }
 
 #[allow(clippy::missing_errors_doc)]

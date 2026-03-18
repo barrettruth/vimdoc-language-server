@@ -7,7 +7,8 @@ use lsp_types::{
 };
 use serde_json::json;
 use vimdoc_language_server::{
-    diagnostics, handlers, parser::Document, server::Config, store::Store, tags::TagIndex,
+    diagnostics, formatter::ReflowMode, handlers, parser::Document, server::Config, store::Store,
+    tags::TagIndex,
 };
 
 #[test]
@@ -708,6 +709,8 @@ mod formatting {
         let config = Config {
             line_width: 78,
             formatting: true,
+            reflow: ReflowMode::Always,
+            normalize_spacing: false,
             diagnostics: false,
             hover: false,
             runtime_tags: false,
@@ -736,6 +739,8 @@ mod formatting {
         let config = Config {
             line_width: 20,
             formatting: true,
+            reflow: ReflowMode::Always,
+            normalize_spacing: false,
             diagnostics: false,
             hover: false,
             runtime_tags: false,

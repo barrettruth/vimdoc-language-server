@@ -10,6 +10,8 @@ fn default_config() -> Config {
     Config {
         line_width: 78,
         formatting: true,
+        reflow: vimdoc_language_server::formatter::ReflowMode::Always,
+        normalize_spacing: false,
         diagnostics: false,
         hover: true,
         runtime_tags: false,
