@@ -83,6 +83,7 @@ fn handle_request(
         RangeFormatting::METHOD if config.formatting => {
             handlers::handle_range_formatting(req, store, config)
         }
+        "workspace/symbol" => handlers::handle_workspace_symbol(req, tag_index),
         DocumentSymbolRequest::METHOD => handlers::handle_document_symbol(req, store),
         GotoDefinition::METHOD => handlers::handle_goto_definition(req, store, tag_index),
         DocumentHighlightRequest::METHOD => handlers::handle_document_highlight(req, store),

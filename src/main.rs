@@ -85,6 +85,7 @@ fn server_capabilities(cli: &Cli) -> ServerCapabilities {
             Some(OneOf::Left(true))
         },
         document_symbol_provider: Some(OneOf::Left(true)),
+        workspace_symbol_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         references_provider: Some(OneOf::Left(true)),
         rename_provider: Some(OneOf::Right(lsp_types::RenameOptions {
