@@ -1,0 +1,67 @@
+---
+layout: ../layouts/DocLayout.astro
+title: Installation
+---
+
+# Installation
+
+## Cargo
+
+```sh
+cargo install vimdoc-language-server
+```
+
+## Nix
+
+Run directly:
+
+```sh
+nix run github:barrettruth/vimdoc-language-server
+```
+
+Or add to your flake inputs:
+
+```nix
+inputs.vimdoc-ls.url = "github:barrettruth/vimdoc-language-server";
+```
+
+## From source
+
+```sh
+git clone https://github.com/barrettruth/vimdoc-language-server
+cd vimdoc-language-server
+cargo install --path .
+```
+
+## Editor setup
+
+### Neovim
+
+Using the built-in LSP client (Neovim 0.11+):
+
+```lua
+vim.lsp.config('vimdoc_ls', {
+  cmd = { 'vimdoc-language-server' },
+  filetypes = { 'help' },
+  root_markers = { 'doc', '.git' },
+})
+vim.lsp.enable('vimdoc_ls')
+```
+
+Pass `initializationOptions` to configure the server:
+
+```lua
+vim.lsp.config('vimdoc_ls', {
+  cmd = { 'vimdoc-language-server' },
+  filetypes = { 'help' },
+  root_markers = { 'doc', '.git' },
+  init_options = {
+    lineWidth = 78,
+    reflow = 'always',
+  },
+})
+```
+
+The server activates on the `help` filetype. The workspace root is determined
+by the first directory matching `root_markers` — typically the `doc/` directory
+containing your help files, or the repository root.

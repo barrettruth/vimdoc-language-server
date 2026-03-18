@@ -1,0 +1,199 @@
+---
+layout: ../layouts/DocLayout.astro
+title: Vimdoc syntax
+---
+
+# Vimdoc syntax
+
+The subset of vimdoc syntax that the language server recognizes and operates
+on. Vimdoc has no formal specification — this reference describes the
+conventions observed across Vim and Neovim runtime documentation.
+
+---
+
+## Tags (`*tag*`)
+
+Tag definitions. Surrounded by asterisks, followed by whitespace or end of
+line. Used by `:helptags` to generate the `tags` file. The server uses these
+for symbols, definitions, completion, and diagnostics.
+
+```text
+*tag-name*
+*plugin.txt*  Plugin description                         *plugin*
+```
+
+Tags are conventionally right-aligned to column 78. The formatter enforces
+this.
+
+Valid tag characters: `#` through `~` in ASCII (printable, excluding space and
+`*`).
+
+---
+
+## Taglinks (`|tag|`)
+
+Cross-references to tag definitions. Pressing `CTRL-]` on a taglink jumps to
+its definition. The server resolves these for go-to-definition, completion,
+diagnostics, and document links.
+
+```text
+See |tag-name| for details.
+```
+
+---
+
+## Optionlinks (`'option'`)
+
+Links to Vim options. Lowercase ASCII, minimum 2 characters. Also matches
+terminal options (`'t_xx'`).
+
+```text
+See 'textwidth' and 't_Co'.
+```
+
+---
+
+## Code blocks
+
+Preformatted blocks. Start with `>` at the end of a line (preceded by a
+space). End with `<` at the start of a line, or implicitly at any line
+starting at column 1.
+
+```text
+Example: >
+    function! Example() abort
+        echo 'hello'
+    endfunction
+<
+```
+
+A language annotation can follow `>` on the same line (Neovim extension):
+
+```text
+>lua
+    vim.print("hello")
+<
+```
+
+Block content must be indented by at least one space or tab. The formatter
+preserves code blocks exactly as written.
+
+---
+
+## Section separators
+
+### h1 — major separator (`=`)
+
+At least 6 `=` characters. Conventionally spans the full line width.
+Followed by a heading line with right-aligned tags.
+
+```text
+==============================================================================
+INTRODUCTION                                              *plugin-intro*
+```
+
+### h2 — minor separator (`-`)
+
+Same rules, with `-` characters.
+
+```text
+------------------------------------------------------------------------------
+Subsection                                             *plugin-subsection*
+```
+
+The formatter normalizes separators to exactly `line_width` characters.
+Folding ranges span from one separator to the next.
+
+---
+
+## Headings
+
+### h3 — UPPERCASE heading
+
+An all-caps line, optionally with right-aligned tags. Not preceded by a
+separator.
+
+```text
+FUNCTION REFERENCE                                    *plugin-functions*
+```
+
+### Column heading (`~`)
+
+Any text followed by `~` at end of line. Rendered with heading highlight.
+
+```text
+Column heading~
+```
+
+---
+
+## Inline elements
+
+### Codespans
+
+Inline code surrounded by backticks. May contain whitespace.
+
+```text
+Use `vim.lsp.start()` to start the server.
+```
+
+### Keycodes
+
+Special key notation and CTRL sequences.
+
+```text
+<Esc>  <CR>  <S-Tab>  <C-W>
+CTRL-X  CTRL-SHIFT-A
+```
+
+### Arguments
+
+Required arguments in `{}`, optional in `[]`.
+
+```text
+:command {arg} [{optional}]
+```
+
+### URLs
+
+Bare URLs are recognized and highlighted.
+
+```text
+https://neovim.io/
+```
+
+---
+
+## Modeline
+
+Must be the last line (or last non-blank line), preceded by a blank line.
+Starts with a leading space.
+
+```text
+ vim:tw=78:ts=8:ft=help:norl:
+```
+
+---
+
+## Lists
+
+Unordered lists start with `-` or `*` (or `•`). Ordered lists start with a
+number followed by `.` and a space.
+
+```text
+- First item
+- Second item
+
+1. Ordered first
+2. Ordered second
+```
+
+The formatter preserves list items and does not merge them with adjacent prose.
+
+---
+
+## Line width
+
+The standard line width is 78 characters. Tags are right-aligned to this
+column. Separator lines span the full width. The server defaults to 78 but
+accepts any value via `--line-width` or `lineWidth`.

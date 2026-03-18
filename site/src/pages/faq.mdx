@@ -1,0 +1,65 @@
+---
+layout: ../layouts/DocLayout.astro
+title: FAQ
+---
+
+# FAQ
+
+## Why do I get false-positive unresolved-tag warnings?
+
+The server scans `|...|` patterns as taglinks. Some vimdoc content uses pipes
+in non-taglink contexts — Lua type unions (`string|nil`), regex alternation
+(`\|`), or option string values. These can produce spurious `unresolved-tag`
+warnings.
+
+Loading external tags reduces false positives for references to Vim/Neovim
+builtins. Set `runtimeTags: true` (the default) or add `tagPaths` pointing
+to your runtime `doc/` directory.
+
+A blank line between a `>` code-fence opener and the code body can also cause
+the server to lose track of code-block context, scanning pipes in code as
+taglinks. Avoid blank lines immediately after `>`.
+
+## Why does the formatter change my file unexpectedly?
+
+The formatter enforces canonical vimdoc style: separator normalization, heading
+tag alignment, and prose reflow. If a file was not written with these
+conventions, the first format may produce a large diff.
+
+Use `reflow: "never"` to disable prose reflow while keeping separator and
+heading normalization. Use `formatting: false` to disable formatting entirely.
+
+See [Formatter](/formatter) for the full behavior.
+
+## How does this relate to tree-sitter-vimdoc?
+
+They are complementary. tree-sitter-vimdoc provides syntax highlighting in
+Neovim. vimdoc-language-server provides LSP features: formatting, diagnostics,
+navigation, completion, rename, and hover. They operate independently and can
+both be active on the same file.
+
+## How do I resolve tags from Vim/Neovim runtime docs?
+
+By default, the server loads `$VIMRUNTIME/doc/tags` if the environment variable
+is set. This resolves taglinks to builtin Vim/Neovim help topics.
+
+If `$VIMRUNTIME` is not set in your editor's environment, point to the tags
+file explicitly:
+
+```lua
+init_options = {
+  tagPaths = { '/usr/share/nvim/runtime/doc' },
+}
+```
+
+## How do I disable specific features?
+
+| Feature | CLI flag | initializationOptions |
+|---|---|---|
+| Formatting | `--no-formatting` | `formatting: false` |
+| Diagnostics | `--no-diagnostics` | `diagnostics: false` |
+| Hover | `--no-hover` | `hover: false` |
+| Runtime tags | `--no-runtime-tags` | `runtimeTags: false` |
+
+Other features (symbols, definition, completion, references, rename,
+highlight, links, folding) are always enabled and have no toggle.

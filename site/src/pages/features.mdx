@@ -1,0 +1,85 @@
+---
+layout: ../layouts/DocLayout.astro
+title: Features
+---
+
+# Features
+
+## Formatting
+
+Normalizes separator lines, reflows prose paragraphs, and right-aligns heading
+tags to the configured line width. Preserves code blocks, list items, and
+indented lines. See [Formatter](/formatter) for details.
+
+Supports both full-document and range formatting.
+
+## Diagnostics
+
+Reports duplicate `*tag*` definitions (same-file and cross-file) and
+unresolved `|taglink|` references. See [Diagnostics](/diagnostics) for
+details.
+
+## Document symbols
+
+Lists all `*tag*` definitions in the current file as a flat symbol list.
+Accessible via `:lua vim.lsp.buf.document_symbol()` or outline plugins.
+
+## Workspace symbols
+
+Searches `*tag*` definitions across all workspace files. Accessible via
+`:lua vim.lsp.buf.workspace_symbol('query')`.
+
+## Go-to-definition
+
+Jumps from a `|taglink|` to its `*tag*` definition. Checks same-file first,
+then workspace, then external tags files. Works cross-file.
+
+## Completion
+
+Tag name completion triggered by typing `|`. Shows all known tags from the
+workspace and external tag files. Inserts the closing `|` automatically.
+
+Only triggers when the cursor is inside `|...|` — typing `|` in other
+contexts (e.g. inside code blocks) does not produce completions.
+
+## Hover
+
+Shows the context surrounding a tag definition — the lines around the `*tag*`,
+stopping at separators or blank lines. Rendered as a `vim` code fence.
+
+## References
+
+Finds all `|taglink|` references to a tag across workspace files. With
+`includeDeclaration`, also includes `*tag*` definitions.
+
+## Rename
+
+Renames a `*tag*` and all its `|taglink|` references across the workspace.
+Validates that the new name contains no whitespace and does not conflict with
+an existing tag. Accessed via `:lua vim.lsp.buf.rename()`.
+
+`prepareRename` returns the tag name without delimiters, so your editor
+shows `tag-name` rather than `*tag-name*` or `|tag-name|`.
+
+## Document highlight
+
+Highlights all occurrences of the tag under the cursor in the current file.
+Definitions (`*tag*`) get write-highlight, references (`|tag|`) get
+read-highlight.
+
+## Document links
+
+Makes `|taglinks|` clickable. Each resolved taglink becomes a link to its
+definition. Unresolved tags are omitted (no broken links). Includes a tooltip
+showing the tag name.
+
+## Folding
+
+Sections between separator lines (`===`/`---`) fold as regions. Code blocks
+(`>` to `<` or EOF) fold independently. Accessible via `zc`/`zo` or
+`:set foldmethod=expr`.
+
+## Range formatting
+
+Formats a selected region instead of the full document. Same rules as
+full-document formatting, applied to the selected lines.
