@@ -10,6 +10,7 @@ mod prepare_rename;
 mod range_formatting;
 mod references;
 mod rename;
+mod workspace_symbol;
 
 pub use completion::handle_completion;
 pub use definition::handle_goto_definition;
@@ -23,3 +24,4 @@ pub use prepare_rename::handle_prepare_rename;
 pub use range_formatting::handle_range_formatting;
 pub use references::handle_references;
 pub use rename::handle_rename;
+pub use workspace_symbol::handle_workspace_symbol;
