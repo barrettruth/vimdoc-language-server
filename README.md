@@ -40,18 +40,21 @@ vim.lsp.enable('vimdoc_ls')
 
 ## Features
 
-- [x] **Formatting** — separator normalization, prose reflow, heading alignment
-- [x] **Diagnostics** — duplicate tag definitions
-- [x] **Document symbols** — all `*tag*` definitions
-- [x] **Go-to-definition** — `|tag-ref|` to `*tag*` in the same file
-- [ ] **Completion** — tag completion from `*tag*` definitions
-- [ ] **Hover** — documentation preview for tags
-- [ ] **References** — find all references to a tag
-- [ ] **Rename** — rename tags and their references
-- [ ] **Cross-file navigation** — go-to-definition across files
-- [ ] **Semantic tokens** — syntax-aware highlighting
+- [x] **Formatting** — separator normalization, prose reflow, heading alignment;
+      range formatting supported
+- [x] **Diagnostics** — duplicate `*tag*` definitions (same-file and
+      cross-file), unresolved `|taglinks|`
+- [x] **Completion** — tag completion triggered by `|`, context-aware
+- [x] **Hover** — tag definition context in a floating window
+- [x] **Go-to-definition** — `|tag-ref|` to `*tag*`, same-file and cross-file
+- [x] **References** — all `|taglinks|` referencing a `*tag*`, cross-file
+- [x] **Rename** — rename a tag and all its references across the workspace
+- [x] **Document symbols** — all `*tag*` definitions in the current file
+- [x] **Document highlight** — highlight all occurrences of a tag under cursor
+- [x] **Document links** — clickable `|taglinks|` with tooltip
+- [x] **Folding** — sections (between separators) and code blocks
 - [ ] **Code actions** — quick fixes and refactors
-- [ ] **Folding** — section-based fold ranges
+- [ ] **Semantic tokens** — syntax-aware highlighting
 
 ## License
 
