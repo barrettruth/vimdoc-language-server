@@ -254,11 +254,6 @@ nav {
   font-size: 0.9rem;
 }
 
-nav.with-toc {
-  max-width: calc(13em + 3rem + 42em);
-  padding-left: calc(13em + 3rem + clamp(1.25rem, 5vw, 3rem));
-}
-
 nav a {
   color: inherit;
   text-decoration: none;
@@ -280,28 +275,18 @@ nav .sep {
   margin: 0 0.5em;
 }
 
-.page-with-toc {
-  display: flex;
-  gap: 3rem;
-  max-width: calc(13em + 3rem + 42em);
-  margin: 0 auto;
-  padding: 0 clamp(1.25rem, 5vw, 3rem);
-  align-items: flex-start;
-}
-
-.page-with-toc main {
-  flex: 1;
-  min-width: 0;
-  padding: 3rem 0 6rem;
-}
-
 .toc-nav {
-  width: 13em;
-  flex-shrink: 0;
-  position: sticky;
-  top: 2rem;
-  padding-top: 3rem;
+  position: fixed;
+  top: 4rem;
+  left: max(1rem, calc(50vw - 21em - 2rem - 11em));
+  width: 11em;
   font-size: 0.85rem;
+}
+
+@media (max-width: 64em) {
+  .toc-nav {
+    display: none;
+  }
 }
 
 .toc-nav ul {
