@@ -2,7 +2,8 @@
 const fm = Astro.props.frontmatter || Astro.props;
 const title = fm.title;
 const description = fm.description || "vimdoc-language-server documentation";
-const isIndex = Astro.url.pathname === "/" || Astro.url.pathname === "/index.html";
+const isIndex =
+  Astro.url.pathname === "/" || Astro.url.pathname === "/index.html";
 ---
 
 <!doctype html>

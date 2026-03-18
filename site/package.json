@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "check": "astro check",
+    "format:check": "prettier --check 'src/**/*.{astro,mdx,css}' astro.config.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.14",
@@ -14,7 +16,9 @@
     "astro": "^5.18.1"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.8",
     "prettier": "^3.8.1",
-    "prettier-plugin-astro": "^0.14.1"
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^5.9.3"
   }
 }
