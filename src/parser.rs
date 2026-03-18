@@ -116,7 +116,13 @@ fn mk(kind: LineKind, tag_defs: Vec<Span>, tag_refs: Vec<Span>) -> ParsedLine {
 }
 
 fn is_fence_start(s: &str) -> bool {
-    s.len() > 1 && s.starts_with('>') && s[1..].bytes().all(|b| b.is_ascii_alphabetic())
+    let Some(lang) = s.strip_prefix('>') else {
+        return false;
+    };
+    !lang.is_empty()
+        && lang
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'+' | b'_'))
 }
 
 #[allow(clippy::similar_names)]
@@ -341,6 +347,33 @@ mod tests {
         let text = ">vim\n    *not-a-tag*\n<";
         let doc = Document::parse(text);
         assert_eq!(doc.tag_defs().count(), 0);
+    }
+
+    #[test]
+    fn code_fence_with_digits_is_recognized() {
+        let text = ">lua54\n    vim.fn.input()\n<\nafter";
+        let doc = Document::parse(text);
+        assert_eq!(doc.lines[0].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[1].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[3].kind, LineKind::Text);
+    }
+
+    #[test]
+    fn code_fence_with_plus_is_recognized() {
+        let text = ">c++\n    int x = 0;\n<\nafter";
+        let doc = Document::parse(text);
+        assert_eq!(doc.lines[0].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[1].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[3].kind, LineKind::Text);
+    }
+
+    #[test]
+    fn code_fence_with_hyphen_is_recognized() {
+        let text = ">objective-c\n    [obj message];\n<\nafter";
+        let doc = Document::parse(text);
+        assert_eq!(doc.lines[0].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[1].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[3].kind, LineKind::Text);
     }
 
     #[test]
