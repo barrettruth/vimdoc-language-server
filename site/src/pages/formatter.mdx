@@ -1,0 +1,129 @@
+---
+layout: ../layouts/DocLayout.astro
+title: Formatter
+---
+
+# Formatter
+
+The formatter enforces canonical vimdoc style. Disable with `--no-formatting`
+or `formatting: false`.
+
+---
+
+## What it changes
+
+### Separator normalization
+
+Separator lines (`===...` and `---...`) are normalized to exactly `line_width`
+characters.
+
+Before:
+
+```text
+====================================
+INTRODUCTION                                          *intro*
+```
+
+After (at line width 78):
+
+```text
+==============================================================================
+INTRODUCTION                                          *intro*
+```
+
+### Heading alignment
+
+Lines with `*tag*` definitions are right-aligned so the tag ends at column
+`line_width`. The prose portion is left as-is; spacing between prose and tag
+is adjusted.
+
+Before:
+
+```text
+INTRODUCTION        *intro*
+```
+
+After:
+
+```text
+INTRODUCTION                                                          *intro*
+```
+
+If the combined prose + tag exceeds `line_width`, a single space is used.
+
+### Prose reflow
+
+Consecutive prose lines (no indentation, no tabs, no tag definitions) are
+reflowed as a paragraph to fit within `line_width`.
+
+Before:
+
+```text
+This is a
+sentence that was broken
+across several short lines for no particular reason.
+```
+
+After:
+
+```text
+This is a sentence that was broken across several short lines for no
+particular reason.
+```
+
+---
+
+## Reflow modes
+
+Set via `--reflow` or `reflow` in `initializationOptions`.
+
+### `always` (default)
+
+All prose paragraphs are reflowed to fit `line_width`.
+
+### `only-if-too-long`
+
+A paragraph is reflowed only if at least one of its lines exceeds
+`line_width`. Short paragraphs are left alone.
+
+### `never`
+
+No prose reflow. Lines are trimmed of trailing whitespace but line breaks are
+preserved.
+
+---
+
+## Spacing
+
+Interior whitespace within a line is preserved by default. Double spaces after
+periods, multi-space alignment — these are kept.
+
+With `--normalize-spacing` or `normalizeSpacing: true`, multiple consecutive
+spaces are collapsed to a single space during reflow.
+
+When lines are joined during reflow, the join point always uses a single space
+regardless of the `normalizeSpacing` setting.
+
+---
+
+## What it preserves
+
+- **Code blocks** (`>` to `<`) — exact whitespace preserved
+- **List items** (`-`, `*`, `1.`) — not reflowed, not merged with adjacent prose
+- **Indented lines** — any line starting with spaces or tabs is left as-is
+- **Tab-containing lines** — command references like `CTRL-V\t\tDescription` are
+  preserved and not merged with adjacent prose
+- **Blank lines** — structure-preserving
+
+---
+
+## Limitations
+
+- List item *continuation* lines may be merged into prose if they are
+  not indented
+- `>language` on its own line (without preceding text) may not be recognized
+  as a code fence opener
+- Heading alignment uses byte length for spacing math — CJK headings may
+  align incorrectly
+- Prose reflow uses byte length for line-width decisions — multibyte words may
+  cause lines to exceed the target width

@@ -1,0 +1,34 @@
+---
+const fm = Astro.props.frontmatter || Astro.props;
+const title = fm.title;
+const description = fm.description || "vimdoc-language-server documentation";
+const isIndex = Astro.url.pathname === "/" || Astro.url.pathname === "/index.html";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="stylesheet" href="/styles/base.css" />
+    <title>{title ? `${title} — vimdoc-ls` : "vimdoc-language-server"}</title>
+  </head>
+  <body>
+    {
+      !isIndex && (
+        <nav>
+          <a class="title" href="/">
+            vimdoc-ls
+          </a>
+          <span class="sep">/</span>
+          <a href={Astro.url.pathname}>{title}</a>
+        </nav>
+      )
+    }
+
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

@@ -1,0 +1,82 @@
+---
+layout: ../layouts/DocLayout.astro
+title: Diagnostics
+---
+
+# Diagnostics
+
+All diagnostics have severity **warning** and source `vimdoc`. Disable
+all diagnostics with `--no-diagnostics` or `diagnostics: false`.
+
+---
+
+## `duplicate-tag`
+
+Fires when a `*tag*` is defined more than once.
+
+### Same-file duplicate
+
+Two or more `*tag*` definitions with the same name in the same file.
+
+```text
+INTRODUCTION                                          *plugin-intro*
+
+...
+
+APPENDIX                                              *plugin-intro*
+```
+
+Both lines receive the warning: `duplicate tag definition: *plugin-intro*`.
+
+### Cross-file duplicate
+
+A `*tag*` in the current file is also defined in another workspace file.
+
+```text
+tag `*api-reference*` is also defined in another file
+```
+
+This catches tag collisions between files in the same `doc/` directory. The
+warning appears on every definition of the tag, in every file.
+
+---
+
+## `unresolved-tag`
+
+Fires when a `|taglink|` references a tag that cannot be found in the current
+file, workspace, or external tag files.
+
+```text
+See |nonexistent-tag| for details.
+```
+
+Produces: `unresolved tag reference: |nonexistent-tag|`.
+
+### Reducing false positives
+
+The server scans `|...|` patterns as potential taglinks. Some valid vimdoc
+content uses pipes in non-taglink contexts:
+
+- Vim regex alternation: `\|` inside code blocks
+- Lua type unions: `string|fun(...)|nil`
+- Option values: `'+,-,+,|'`
+
+If a code block is separated from its `>` opener by a blank line, the
+server may not recognize the code context and flag pipes as unresolved tags.
+
+To eliminate false positives from external Vim documentation, load the runtime
+tags:
+
+```lua
+init_options = {
+  runtimeTags = true,
+}
+```
+
+Or point to specific tag files:
+
+```lua
+init_options = {
+  tagPaths = { '/path/to/neovim/runtime/doc' },
+}
+```

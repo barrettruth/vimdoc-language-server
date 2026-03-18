@@ -9,3 +9,8 @@ CLAUDE.md
 .direnv/
 result
 reuslt-*
+
+site/node_modules/
+site/dist/
+site/.astro/
+site/.vercel/
