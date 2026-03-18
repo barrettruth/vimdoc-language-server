@@ -21,7 +21,7 @@ const h2s = headings.filter((h) => h.depth === 2);
   <body>
     {
       !isIndex && (
-        <nav class={toc ? "with-toc" : ""}>
+        <nav>
           <a class="title" href="/">
             vimdoc-ls
           </a>
@@ -32,26 +32,21 @@ const h2s = headings.filter((h) => h.depth === 2);
     }
 
     {
-      toc ? (
-        <div class="page-with-toc">
-          <aside class="toc-nav">
-            <ul>
-              {h2s.map((h) => (
-                <li>
-                  <a href={`#${h.slug}`}>{h.text}</a>
-                </li>
-              ))}
-            </ul>
-          </aside>
-          <main>
-            <slot />
-          </main>
-        </div>
-      ) : (
-        <main>
-          <slot />
-        </main>
+      toc && (
+        <aside class="toc-nav">
+          <ul>
+            {h2s.map((h) => (
+              <li>
+                <a href={`#${h.slug}`}>{h.text}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
       )
     }
+
+    <main>
+      <slot />
+    </main>
   </body>
 </html>
