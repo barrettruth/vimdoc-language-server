@@ -10,8 +10,6 @@ The subset of vimdoc syntax that the language server recognizes and operates
 on. Vimdoc has no formal specification — this reference describes the
 conventions observed across Vim and Neovim runtime documentation.
 
----
-
 ## Tags (`*tag*`)
 
 Tag definitions. Surrounded by asterisks, followed by whitespace or end of
@@ -29,8 +27,6 @@ this.
 Valid tag characters: `#` through `~` in ASCII (printable, excluding space and
 `*`).
 
----
-
 ## Taglinks (`|tag|`)
 
 Cross-references to tag definitions. Pressing `CTRL-]` on a taglink jumps to
@@ -41,8 +37,6 @@ diagnostics, and document links.
 See |tag-name| for details.
 ```
 
----
-
 ## Optionlinks (`'option'`)
 
 Links to Vim options. Lowercase ASCII, minimum 2 characters. Also matches
@@ -51,8 +45,6 @@ terminal options (`'t_xx'`).
 ```text
 See 'textwidth' and 't_Co'.
 ```
-
----
 
 ## Code blocks
 
@@ -79,8 +71,6 @@ A language annotation can follow `>` on the same line (Neovim extension):
 Block content must be indented by at least one space or tab. The formatter
 preserves code blocks exactly as written.
 
----
-
 ## Section separators
 
 ### h1 — major separator (`=`)
@@ -105,8 +95,6 @@ Subsection                                             *plugin-subsection*
 The formatter normalizes separators to exactly `line_width` characters.
 Folding ranges span from one separator to the next.
 
----
-
 ## Headings
 
 ### h3 — UPPERCASE heading
@@ -125,8 +113,6 @@ Any text followed by `~` at end of line. Rendered with heading highlight.
 ```text
 Column heading~
 ```
-
----
 
 ## Inline elements
 
@@ -163,8 +149,6 @@ Bare URLs are recognized and highlighted.
 https://neovim.io/
 ```
 
----
-
 ## Modeline
 
 Must be the last line (or last non-blank line), preceded by a blank line.
@@ -173,8 +157,6 @@ Starts with a leading space.
 ```text
  vim:tw=78:ts=8:ft=help:norl:
 ```
-
----
 
 ## Lists
 
@@ -190,8 +172,6 @@ number followed by `.` and a space.
 ```
 
 The formatter preserves list items and does not merge them with adjacent prose.
-
----
 
 ## Line width
 

@@ -8,8 +8,6 @@ title: Formatter
 The formatter enforces canonical vimdoc style. Disable with `--no-formatting`
 or `formatting: false`.
 
----
-
 ## What it changes
 
 ### Separator normalization
@@ -71,8 +69,6 @@ This is a sentence that was broken across several short lines for no
 particular reason.
 ```
 
----
-
 ## Reflow modes
 
 Set via `--reflow` or `reflow` in `initializationOptions`.
@@ -91,8 +87,6 @@ A paragraph is reflowed only if at least one of its lines exceeds
 No prose reflow. Lines are trimmed of trailing whitespace but line breaks are
 preserved.
 
----
-
 ## Spacing
 
 Interior whitespace within a line is preserved by default. Double spaces after
@@ -104,8 +98,6 @@ spaces are collapsed to a single space during reflow.
 When lines are joined during reflow, the join point always uses a single space
 regardless of the `normalizeSpacing` setting.
 
----
-
 ## What it preserves
 
 - **Code blocks** (`>` to `<`) — exact whitespace preserved
@@ -114,8 +106,6 @@ regardless of the `normalizeSpacing` setting.
 - **Tab-containing lines** — command references like `CTRL-V\t\tDescription` are
   preserved and not merged with adjacent prose
 - **Blank lines** — structure-preserving
-
----
 
 ## Limitations
 

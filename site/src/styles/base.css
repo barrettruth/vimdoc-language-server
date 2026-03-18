@@ -185,6 +185,8 @@ pre {
   padding: 1rem 1.25rem;
   border-radius: 4px;
   overflow-x: auto;
+  white-space: pre;
+  word-wrap: normal;
   margin-bottom: 1.25rem;
   line-height: 1.5;
   background: #ebebeb;
@@ -277,11 +279,24 @@ nav .sep {
 
 .toc-nav {
   position: fixed;
-  top: 6rem;
+  top: 6.5rem;
   left: max(1rem, calc(50vw - 23rem - 2rem - 11rem));
   width: 11rem;
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.toc-nav code {
+  font-size: 0.85em;
+  padding: 0.1em 0.25em;
+  border-radius: 2px;
+  background: #e8e8e8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .toc-nav code {
+    background: #222222;
+  }
 }
 
 @media (max-width: 64em) {

@@ -9,6 +9,13 @@ const headings: MarkdownHeading[] = Astro.props.headings ?? [];
 const isIndex =
   Astro.url.pathname === "/" || Astro.url.pathname === "/index.html";
 const h2s = headings.filter((h) => h.depth === 2);
+
+function formatTocText(text: string): string {
+  if (!text.includes(" ") && /[-.]/.test(text)) {
+    return `<code>${text}</code>`;
+  }
+  return text.replace(/\(([^)]+)\)/g, "(<code>$1</code>)");
+}
 ---
 
 <!doctype html>
@@ -38,7 +45,7 @@ const h2s = headings.filter((h) => h.depth === 2);
           <ul>
             {h2s.map((h) => (
               <li>
-                <a href={`#${h.slug}`}>{h.text}</a>
+                <a href={`#${h.slug}`} set:html={formatTocText(h.text)} />
               </li>
             ))}
           </ul>
