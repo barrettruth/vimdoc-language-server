@@ -13,6 +13,7 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       markdown: ${{ steps.filter.outputs.markdown }}
+      site: ${{ steps.filter.outputs.site }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -27,6 +28,8 @@ jobs:
               - 'rustfmt.toml'
             markdown:
               - '*.md'
+            site:
+              - 'site/**'
 
   fmt:
     name: Rust Format Check
@@ -63,3 +66,39 @@ jobs:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
       - run: nix develop --command prettier --check "**/*.md"
+
+  site-check:
+    name: Astro Type Check
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: site/package.json
+      - run: pnpm install --frozen-lockfile
+        working-directory: site
+      - run: pnpm check
+        working-directory: site
+
+  site-format:
+    name: Site Format Check
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: site/package.json
+      - run: pnpm install --frozen-lockfile
+        working-directory: site
+      - run: pnpm format:check
+        working-directory: site
