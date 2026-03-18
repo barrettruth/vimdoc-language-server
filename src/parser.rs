@@ -97,6 +97,13 @@ fn parse_line(line_num: u32, raw: &str, in_code: &mut bool) -> ParsedLine {
         return mk(LineKind::ListItem, tag_defs, tag_refs);
     }
 
+    if tag_defs.is_empty() {
+        let after_digits = raw.trim_start_matches(|c: char| c.is_ascii_digit());
+        if after_digits.len() < raw.len() && after_digits.starts_with(". ") {
+            return mk(LineKind::ListItem, tag_defs, tag_refs);
+        }
+    }
+
     mk(LineKind::Text, tag_defs, tag_refs)
 }
 
@@ -314,5 +321,30 @@ mod tests {
     fn separator_not_mistaken_for_list_item() {
         let doc = Document::parse(&"-".repeat(78));
         assert_eq!(doc.lines[0].kind, LineKind::Separator(SepKind::Minor));
+    }
+
+    #[test]
+    fn ordered_list_item_is_list_item() {
+        let doc = Document::parse("1. First item");
+        assert_eq!(doc.lines[0].kind, LineKind::ListItem);
+    }
+
+    #[test]
+    fn multi_digit_ordered_item_is_list_item() {
+        let doc = Document::parse("42. Forty-second item");
+        assert_eq!(doc.lines[0].kind, LineKind::ListItem);
+    }
+
+    #[test]
+    fn version_number_not_list_item() {
+        let doc = Document::parse("3.14 is approximately pi");
+        assert_eq!(doc.lines[0].kind, LineKind::Text);
+    }
+
+    #[test]
+    fn numbered_item_with_tag_not_list_item() {
+        let doc = Document::parse("1. Introduction\t\t\t*intro*");
+        assert_eq!(doc.lines[0].kind, LineKind::Text);
+        assert_eq!(doc.tag_defs().count(), 1);
     }
 }

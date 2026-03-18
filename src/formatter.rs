@@ -247,4 +247,18 @@ mod tests {
         let twice = format_document(&once, 78);
         assert_eq!(once, twice);
     }
+
+    #[test]
+    fn ordered_list_items_not_merged() {
+        let input = "1. First item\n2. Second item\n3. Third item\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn ordered_list_not_merged_with_prose() {
+        let input = "Intro text.\n1. First item\n2. Second item\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
 }
