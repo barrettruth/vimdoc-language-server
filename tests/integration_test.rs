@@ -903,7 +903,16 @@ mod code_action {
         let CodeActionOrCommand::CodeAction(action) = &result[idx] else {
             panic!("expected CodeAction at index {idx}")
         };
-        action.edit.as_ref().unwrap().changes.as_ref().unwrap().values().next().unwrap()
+        action
+            .edit
+            .as_ref()
+            .unwrap()
+            .changes
+            .as_ref()
+            .unwrap()
+            .values()
+            .next()
+            .unwrap()
     }
 
     #[test]
@@ -912,8 +921,12 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), FIXTURE.into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(4, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(4, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
@@ -933,8 +946,12 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), FIXTURE.into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(2, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(2, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
@@ -950,15 +967,21 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), "----------\n".into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(0, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
         let titles: Vec<&str> = result
             .iter()
             .map(|a| {
-                let CodeActionOrCommand::CodeAction(ca) = a else { panic!("expected CodeAction") };
+                let CodeActionOrCommand::CodeAction(ca) = a else {
+                    panic!("expected CodeAction")
+                };
                 ca.title.as_str()
             })
             .collect();
@@ -971,8 +994,12 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), FIXTURE.into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(0, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
@@ -988,8 +1015,12 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), FIXTURE.into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(1, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(1, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
         assert!(result.is_empty());
@@ -1001,8 +1032,12 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), FIXTURE.into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(8, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(8, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
         assert_eq!(result.len(), 7);
@@ -1014,13 +1049,19 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), FIXTURE.into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(8, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(8, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
         let has_lua = result.iter().any(|a| {
-            let CodeActionOrCommand::CodeAction(ca) = a else { return false };
+            let CodeActionOrCommand::CodeAction(ca) = a else {
+                return false;
+            };
             ca.title == "Set code block language: lua"
         });
         assert!(!has_lua);
@@ -1032,8 +1073,12 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), "short prose\n".into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(0, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
         assert!(result.is_empty());
@@ -1108,23 +1153,40 @@ mod code_action {
     fn toc_generated_before_first_separator() {
         let mut store = Store::default();
         let uri: Uri = "file:///test.txt".parse().unwrap();
-        store.open(uri.clone(), "A *a*\n\nB *b*\n\n==============================\n".into());
+        store.open(
+            uri.clone(),
+            "A *a*\n\nB *b*\n\n==============================\n".into(),
+        );
 
-        let resp =
-            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(0, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
         let toc_action = result.iter().find(|a| {
-            let CodeActionOrCommand::CodeAction(ca) = a else { return false };
+            let CodeActionOrCommand::CodeAction(ca) = a else {
+                return false;
+            };
             ca.title == "Generate table of contents"
         });
         assert!(toc_action.is_some());
         let CodeActionOrCommand::CodeAction(action) = toc_action.unwrap() else {
             unreachable!()
         };
-        let edits =
-            action.edit.as_ref().unwrap().changes.as_ref().unwrap().values().next().unwrap();
+        let edits = action
+            .edit
+            .as_ref()
+            .unwrap()
+            .changes
+            .as_ref()
+            .unwrap()
+            .values()
+            .next()
+            .unwrap();
         assert_eq!(edits[0].range.start.line, 4);
     }
 
@@ -1134,13 +1196,19 @@ mod code_action {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         store.open(uri.clone(), "Only *one-heading*\n".into());
 
-        let resp =
-            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(0, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
         let has_toc = result.iter().any(|a| {
-            let CodeActionOrCommand::CodeAction(ca) = a else { return false };
+            let CodeActionOrCommand::CodeAction(ca) = a else {
+                return false;
+            };
             ca.title == "Generate table of contents"
         });
         assert!(!has_toc);
@@ -1155,13 +1223,19 @@ mod code_action {
             "A *a*\n\nB *b*\n\nContents *test-contents*\n".into(),
         );
 
-        let resp =
-            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let resp = handlers::handle_code_action(
+            &make_req(0, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
         let result: Vec<CodeActionOrCommand> =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
         let has_toc = result.iter().any(|a| {
-            let CodeActionOrCommand::CodeAction(ca) = a else { return false };
+            let CodeActionOrCommand::CodeAction(ca) = a else {
+                return false;
+            };
             ca.title == "Generate table of contents"
         });
         assert!(!has_toc);

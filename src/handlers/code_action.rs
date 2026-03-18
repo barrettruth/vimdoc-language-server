@@ -16,7 +16,12 @@ use crate::tags::TagIndex;
 const LANGUAGES: &[&str] = &["lua", "vim", "python", "sh", "bash", "c", "go", "rust"];
 
 #[allow(clippy::mutable_key_type)]
-fn make_action(title: &str, kind: CodeActionKind, uri: &Uri, edit: TextEdit) -> CodeActionOrCommand {
+fn make_action(
+    title: &str,
+    kind: CodeActionKind,
+    uri: &Uri,
+    edit: TextEdit,
+) -> CodeActionOrCommand {
     CodeActionOrCommand::CodeAction(CodeAction {
         title: title.to_string(),
         kind: Some(kind),
@@ -88,12 +93,23 @@ fn collect_format_action(
     let range_end = text_end_position(raw_lines[end]);
     let edit = TextEdit {
         range: Range {
-            start: Position { line: start as u32, character: 0 },
-            end: Position { line: end as u32, character: range_end.character },
+            start: Position {
+                line: start as u32,
+                character: 0,
+            },
+            end: Position {
+                line: end as u32,
+                character: range_end.character,
+            },
         },
         new_text,
     };
-    actions.push(make_action("Format this block", CodeActionKind::SOURCE, uri, edit));
+    actions.push(make_action(
+        "Format this block",
+        CodeActionKind::SOURCE,
+        uri,
+        edit,
+    ));
 }
 
 #[allow(clippy::cast_possible_truncation)]
@@ -110,8 +126,14 @@ fn collect_separator_convert(
     }
     let end_char = text_end_position(raw_lines[cursor_line]).character;
     let range = Range {
-        start: Position { line: cursor_line as u32, character: 0 },
-        end: Position { line: cursor_line as u32, character: end_char },
+        start: Position {
+            line: cursor_line as u32,
+            character: 0,
+        },
+        end: Position {
+            line: cursor_line as u32,
+            character: end_char,
+        },
     };
     match &doc.lines[cursor_line].kind {
         LineKind::Separator(SepKind::Major) => {
@@ -119,7 +141,10 @@ fn collect_separator_convert(
                 "Convert to minor separator",
                 CodeActionKind::REFACTOR,
                 uri,
-                TextEdit { range, new_text: "-".repeat(config.line_width) },
+                TextEdit {
+                    range,
+                    new_text: "-".repeat(config.line_width),
+                },
             ));
         }
         LineKind::Separator(SepKind::Minor) => {
@@ -127,7 +152,10 @@ fn collect_separator_convert(
                 "Convert to major separator",
                 CodeActionKind::REFACTOR,
                 uri,
-                TextEdit { range, new_text: "=".repeat(config.line_width) },
+                TextEdit {
+                    range,
+                    new_text: "=".repeat(config.line_width),
+                },
             ));
         }
         _ => {}
@@ -178,8 +206,14 @@ fn collect_fence_language_actions(
     let current_lang = raw_lines[fence_idx].trim_end()[1..].to_string();
     let end_char = text_end_position(raw_lines[fence_idx]).character;
     let fence_range = Range {
-        start: Position { line: fence_idx as u32, character: 0 },
-        end: Position { line: fence_idx as u32, character: end_char },
+        start: Position {
+            line: fence_idx as u32,
+            character: 0,
+        },
+        end: Position {
+            line: fence_idx as u32,
+            character: end_char,
+        },
     };
     for &lang in LANGUAGES {
         if lang == current_lang {
@@ -189,7 +223,10 @@ fn collect_fence_language_actions(
             &format!("Set code block language: {lang}"),
             CodeActionKind::REFACTOR,
             uri,
-            TextEdit { range: fence_range, new_text: format!(">{lang}") },
+            TextEdit {
+                range: fence_range,
+                new_text: format!(">{lang}"),
+            },
         ));
     }
 }
@@ -241,7 +278,10 @@ fn collect_taglink_toggle(
                 "Remove taglink delimiters",
                 CodeActionKind::REFACTOR,
                 uri,
-                TextEdit { range: span.range, new_text: span.name.clone() },
+                TextEdit {
+                    range: span.range,
+                    new_text: span.name.clone(),
+                },
             ));
             return;
         }
@@ -269,8 +309,14 @@ fn collect_taglink_toggle(
         uri,
         TextEdit {
             range: Range {
-                start: Position { line: cursor_line as u32, character: start_char },
-                end: Position { line: cursor_line as u32, character: end_char },
+                start: Position {
+                    line: cursor_line as u32,
+                    character: start_char,
+                },
+                end: Position {
+                    line: cursor_line as u32,
+                    character: end_char,
+                },
             },
             new_text: format!("|{word}|"),
         },
@@ -297,7 +343,10 @@ fn collect_toc_entries(doc: &Document, raw_lines: &[&str]) -> Vec<TocEntry> {
         if title.is_empty() {
             continue;
         }
-        entries.push(TocEntry { title, tag: tag.name.clone() });
+        entries.push(TocEntry {
+            title,
+            tag: tag.name.clone(),
+        });
     }
     entries
 }
@@ -322,7 +371,10 @@ fn format_toc_header(left: &str, tag: &str, line_width: usize) -> String {
     let right = format!("*{tag}*");
     let used = left.len() + right.len();
     if line_width > used + 1 {
-        format!("{left}{}{right}", " ".repeat(line_width - left.len() - right.len()))
+        format!(
+            "{left}{}{right}",
+            " ".repeat(line_width - left.len() - right.len())
+        )
     } else {
         format!("{left} {right}")
     }
@@ -373,20 +425,34 @@ fn collect_toc_action(
     let edit = if insertion_line < raw_lines.len() {
         TextEdit {
             range: Range {
-                start: Position { line: insertion_line as u32, character: 0 },
-                end: Position { line: insertion_line as u32, character: 0 },
+                start: Position {
+                    line: insertion_line as u32,
+                    character: 0,
+                },
+                end: Position {
+                    line: insertion_line as u32,
+                    character: 0,
+                },
             },
             new_text: format!("{header}\n\n{toc_text}\n\n"),
         }
     } else {
         let end_pos = text_end_position(text);
         TextEdit {
-            range: Range { start: end_pos, end: end_pos },
+            range: Range {
+                start: end_pos,
+                end: end_pos,
+            },
             new_text: format!("\n\n{header}\n\n{toc_text}\n"),
         }
     };
 
-    actions.push(make_action("Generate table of contents", CodeActionKind::SOURCE, uri, edit));
+    actions.push(make_action(
+        "Generate table of contents",
+        CodeActionKind::SOURCE,
+        uri,
+        edit,
+    ));
 }
 
 #[must_use]
