@@ -48,11 +48,23 @@ pub fn format_document(text: &str, line_width: usize) -> String {
                             {
                                 j += 1;
                             }
-                            let words: Vec<&str> = raw_lines[i..j]
-                                .iter()
-                                .flat_map(|l| l.split_whitespace())
-                                .collect();
-                            reflow_words(&words, line_width, &mut out);
+                            let num_lines = j - i;
+                            let mut tokens: Vec<(&str, usize)> = Vec::new();
+                            let mut pending_space: usize = 0;
+                            for (idx, line) in raw_lines[i..j].iter().enumerate() {
+                                let is_last_line = idx == num_lines - 1;
+                                let line_tokens = split_words_with_spacing(line);
+                                let len = line_tokens.len();
+                                for (k, (word, trailing)) in line_tokens.into_iter().enumerate() {
+                                    tokens.push((word, pending_space));
+                                    pending_space = if !is_last_line && k == len - 1 {
+                                        1
+                                    } else {
+                                        trailing
+                                    };
+                                }
+                            }
+                            reflow_tokens(&tokens, line_width, &mut out);
                             i = j;
                         }
                     } else {
@@ -114,16 +126,45 @@ fn leading_whitespace(s: &str) -> &str {
     &s[..s.len() - trimmed.len()]
 }
 
-fn reflow_words(words: &[&str], line_width: usize, out: &mut Vec<String>) {
-    if words.is_empty() {
+fn split_words_with_spacing(s: &str) -> Vec<(&str, usize)> {
+    let bytes = s.as_bytes();
+    let mut result = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        while i < bytes.len() && (bytes[i] == b' ' || bytes[i] == b'\t') {
+            i += 1;
+        }
+        if i >= bytes.len() {
+            break;
+        }
+        let start = i;
+        while i < bytes.len() && bytes[i] != b' ' && bytes[i] != b'\t' {
+            i += 1;
+        }
+        let word = &s[start..i];
+        let sp_start = i;
+        while i < bytes.len() && (bytes[i] == b' ' || bytes[i] == b'\t') {
+            i += 1;
+        }
+        result.push((word, i - sp_start));
+    }
+    result
+}
+
+fn reflow_tokens(tokens: &[(&str, usize)], line_width: usize, out: &mut Vec<String>) {
+    if tokens.is_empty() {
         return;
     }
     let mut line = String::new();
-    for word in words {
+    for (word, pre_space) in tokens {
+        let pre_space = *pre_space;
         if line.is_empty() {
             line.push_str(word);
         } else if line.len() + 1 + word.len() <= line_width {
-            line.push(' ');
+            let sp = pre_space.min(line_width - line.len() - word.len());
+            for _ in 0..sp {
+                line.push(' ');
+            }
             line.push_str(word);
         } else {
             out.push(line);
@@ -258,6 +299,34 @@ mod tests {
     #[test]
     fn ordered_list_not_merged_with_prose() {
         let input = "Intro text.\n1. First item\n2. Second item\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn double_space_after_period_preserved() {
+        let input = "First sentence.  Second sentence.\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn double_space_preserved_during_reflow() {
+        let input = "The quick brown fox.  The lazy dog sat.\n";
+        let result = format_document(input, 78);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn line_break_joins_with_single_space() {
+        let input = "word1 word2\nword3 word4";
+        let result = format_document(input, 78);
+        assert_eq!(result, "word1 word2 word3 word4");
+    }
+
+    #[test]
+    fn multi_space_internal_preserved() {
+        let input = "Vi      \"the original\".\n";
         let result = format_document(input, 78);
         assert_eq!(result, input);
     }
