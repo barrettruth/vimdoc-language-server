@@ -1,10 +1,11 @@
 ---
 import "../styles/base.css";
+import type { MarkdownHeading } from "astro";
 const fm = Astro.props.frontmatter || Astro.props;
 const title = fm.title;
 const description = fm.description || "help for help files";
 const toc = fm.toc ?? false;
-const headings = Astro.props.headings ?? [];
+const headings: MarkdownHeading[] = Astro.props.headings ?? [];
 const isIndex =
   Astro.url.pathname === "/" || Astro.url.pathname === "/index.html";
 const h2s = headings.filter((h) => h.depth === 2);

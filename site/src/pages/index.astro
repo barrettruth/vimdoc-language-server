@@ -31,7 +31,7 @@ import { midnight, daylight } from "../themes.mjs";
 })
 vim.lsp.enable('vimdoc_ls')`}
     lang="lua"
-    themes={{ light: daylight, dark: midnight }}
+    themes={{ light: daylight as any, dark: midnight as any }}
   />
 
   <h2>Documentation</h2>
