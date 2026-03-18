@@ -1,7 +1,5 @@
 ---
-import { Code } from "astro:components";
 import DocLayout from "../layouts/DocLayout.astro";
-import { midnight, daylight } from "../themes.mjs";
 ---
 
 <DocLayout title="" description="help for help files">
@@ -15,29 +13,9 @@ import { midnight, daylight } from "../themes.mjs";
     <code>doc/</code>.
   </p>
 
-  <h2>Install</h2>
-
-  <pre><code>cargo install vimdoc-language-server</code></pre>
-
-  <pre><code>nix run github:barrettruth/vimdoc-language-server</code></pre>
-
-  <h2>Setup</h2>
-
-  <Code
-    code={`vim.lsp.config('vimdoc_ls', {
-  cmd = { 'vimdoc-language-server' },
-  filetypes = { 'help' },
-  root_markers = { 'doc', '.git' },
-})
-vim.lsp.enable('vimdoc_ls')`}
-    lang="lua"
-    themes={{ light: daylight as any, dark: midnight as any }}
-  />
-
   <h2>Documentation</h2>
 
   <ul>
-    <li><a href="/installation">Installation</a></li>
     <li><a href="/configuration">Configuration</a></li>
     <li><a href="/features">Features</a></li>
     <li><a href="/diagnostics">Diagnostics</a></li>
@@ -46,9 +24,14 @@ vim.lsp.enable('vimdoc_ls')`}
     <li><a href="/faq">FAQ</a></li>
   </ul>
 
-  <p>
-    <a href="https://github.com/barrettruth/vimdoc-language-server">GitHub</a>
-    <span style="opacity: 0.3; margin: 0 0.5em;">·</span>
-    <a href="https://crates.io/crates/vimdoc-language-server">crates.io</a>
-  </p>
+  <h2>Links</h2>
+
+  <ul>
+    <li>
+      <a href="https://github.com/barrettruth/vimdoc-language-server">GitHub</a>
+    </li>
+    <li>
+      <a href="https://crates.io/crates/vimdoc-language-server">crates.io</a>
+    </li>
+  </ul>
 </DocLayout>

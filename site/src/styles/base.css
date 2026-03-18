@@ -280,16 +280,8 @@ nav .sep {
   top: 6rem;
   left: max(1rem, calc(50vw - 23rem - 2rem - 11rem));
   width: 11rem;
-  font-size: 0.85rem;
-  border-left: 1px solid #d0d0d0;
-  padding-left: 0.75rem;
-  line-height: 1.4;
-}
-
-@media (prefers-color-scheme: dark) {
-  .toc-nav {
-    border-left-color: #3d3d3d;
-  }
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 @media (max-width: 64em) {
