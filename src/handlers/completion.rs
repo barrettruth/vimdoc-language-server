@@ -66,11 +66,16 @@ fn is_inside_taglink(text: &str, pos: Position) -> bool {
         return false;
     };
     let col = pos.character as usize;
-    let prefix = if col <= line.len() {
-        &line[..col]
-    } else {
-        line
-    };
-    let pipes = prefix.bytes().filter(|&b| b == b'|').count();
+    let mut utf16_offset = 0;
+    let mut pipes = 0;
+    for ch in line.chars() {
+        if utf16_offset >= col {
+            break;
+        }
+        if ch == '|' {
+            pipes += 1;
+        }
+        utf16_offset += ch.len_utf16();
+    }
     pipes % 2 == 1
 }
