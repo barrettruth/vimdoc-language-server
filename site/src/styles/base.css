@@ -104,7 +104,7 @@ body {
 }
 
 main {
-  max-width: 46rem;
+  max-width: 50rem;
   margin: 0 auto;
   padding: 3rem clamp(1.25rem, 5vw, 3rem) 6rem;
 }
@@ -250,7 +250,7 @@ hr {
 }
 
 nav {
-  max-width: 46rem;
+  max-width: 50rem;
   margin: 0 auto;
   padding: 1.5rem clamp(1.25rem, 5vw, 3rem) 0;
   font-size: 0.9rem;
@@ -280,7 +280,7 @@ nav .sep {
 .toc-nav {
   position: fixed;
   top: 6.5rem;
-  left: max(1rem, calc(50vw - 23rem - 2rem - 11rem));
+  left: max(1rem, calc(50vw - 25rem - 2rem - 11rem));
   width: 11rem;
   font-size: 0.9rem;
   line-height: 1.5;
