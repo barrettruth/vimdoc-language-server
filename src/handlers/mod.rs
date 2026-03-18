@@ -1,3 +1,4 @@
+mod code_action;
 mod completion;
 mod definition;
 mod document_link;
@@ -12,6 +13,7 @@ mod references;
 mod rename;
 mod workspace_symbol;
 
+pub use code_action::handle_code_action;
 pub use completion::handle_completion;
 pub use definition::handle_goto_definition;
 pub use document_link::handle_document_link;
