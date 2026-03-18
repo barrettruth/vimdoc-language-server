@@ -107,6 +107,11 @@ fn server_capabilities(cli: &Cli) -> ServerCapabilities {
             resolve_provider: Some(false),
             work_done_progress_options: lsp_types::WorkDoneProgressOptions::default(),
         }),
+        code_action_provider: if cli.no_formatting {
+            None
+        } else {
+            Some(lsp_types::CodeActionProviderCapability::Simple(true))
+        },
         ..Default::default()
     }
 }

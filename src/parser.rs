@@ -174,7 +174,7 @@ fn scan_inline(line_num: u32, raw: &str) -> (Vec<Span>, Vec<Span>) {
 }
 
 #[allow(clippy::cast_possible_truncation)]
-fn byte_offset_to_utf16(s: &str, byte_pos: usize) -> u32 {
+pub(crate) fn byte_offset_to_utf16(s: &str, byte_pos: usize) -> u32 {
     s[..byte_pos].chars().map(char::len_utf16).sum::<usize>() as u32
 }
 

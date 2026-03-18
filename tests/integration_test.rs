@@ -1,9 +1,9 @@
 use expect_test::expect;
 use lsp_server::Request;
 use lsp_types::{
-    CompletionResponse, DocumentHighlight, DocumentHighlightKind, DocumentSymbolResponse,
-    FoldingRange, GotoDefinitionResponse, Location, NumberOrString, PrepareRenameResponse,
-    TextEdit, Uri, WorkspaceEdit,
+    CodeActionOrCommand, CompletionResponse, DocumentHighlight, DocumentHighlightKind,
+    DocumentSymbolResponse, FoldingRange, GotoDefinitionResponse, Location, NumberOrString,
+    PrepareRenameResponse, TextEdit, Uri, WorkspaceEdit,
 };
 use serde_json::json;
 use vimdoc_language_server::{
@@ -859,6 +859,312 @@ mod formatting {
 
         let resp = handlers::handle_range_formatting(&req, &store, &config);
         assert_eq!(resp.result, Some(serde_json::Value::Null));
+    }
+}
+
+mod code_action {
+    use super::*;
+
+    const FIXTURE: &str = "heading text *heading*\n\n==========\n\nprose line one\nprose line two\n\n>lua\n    some_code()\n<\n";
+
+    fn make_config() -> Config {
+        Config {
+            line_width: 30,
+            formatting: true,
+            reflow: ReflowMode::Always,
+            normalize_spacing: false,
+            diagnostics: false,
+            hover: false,
+            runtime_tags: false,
+            tag_paths: vec![],
+        }
+    }
+
+    fn make_req(cursor_line: u32, uri: &Uri) -> Request {
+        make_req_at(cursor_line, 0, uri)
+    }
+
+    fn make_req_at(cursor_line: u32, cursor_char: u32, uri: &Uri) -> Request {
+        Request {
+            id: 1.into(),
+            method: "textDocument/codeAction".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() },
+                "range": {
+                    "start": { "line": cursor_line, "character": cursor_char },
+                    "end":   { "line": cursor_line, "character": cursor_char }
+                },
+                "context": { "diagnostics": [] }
+            }),
+        }
+    }
+
+    fn action_edits(result: &[CodeActionOrCommand], idx: usize) -> &[TextEdit] {
+        let CodeActionOrCommand::CodeAction(action) = &result[idx] else {
+            panic!("expected CodeAction at index {idx}")
+        };
+        action.edit.as_ref().unwrap().changes.as_ref().unwrap().values().next().unwrap()
+    }
+
+    #[test]
+    fn prose_block_returns_action_covering_paragraph() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), FIXTURE.into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(4, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        assert_eq!(result.len(), 1);
+        let CodeActionOrCommand::CodeAction(action) = &result[0] else {
+            panic!("expected CodeAction")
+        };
+        assert_eq!(action.title, "Format this block");
+        let edits = action_edits(&result, 0);
+        assert_eq!(edits[0].range.start.line, 4);
+        assert_eq!(edits[0].range.end.line, 5);
+    }
+
+    #[test]
+    fn separator_returns_format_and_convert_actions() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), FIXTURE.into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(2, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        assert_eq!(result.len(), 2);
+        let edits = action_edits(&result, 0);
+        assert_eq!(edits[0].range.start.line, 2);
+        assert_eq!(edits[0].range.end.line, 2);
+    }
+
+    #[test]
+    fn convert_separator_minor_to_major() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "----------\n".into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let titles: Vec<&str> = result
+            .iter()
+            .map(|a| {
+                let CodeActionOrCommand::CodeAction(ca) = a else { panic!("expected CodeAction") };
+                ca.title.as_str()
+            })
+            .collect();
+        assert!(titles.contains(&"Convert to major separator"));
+    }
+
+    #[test]
+    fn heading_returns_single_line_action() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), FIXTURE.into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        assert_eq!(result.len(), 1);
+        let edits = action_edits(&result, 0);
+        assert_eq!(edits[0].range.start.line, 0);
+        assert_eq!(edits[0].range.end.line, 0);
+    }
+
+    #[test]
+    fn blank_line_returns_empty_actions() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), FIXTURE.into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(1, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn fence_language_offered_on_code_body() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), FIXTURE.into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(8, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+        assert_eq!(result.len(), 7);
+    }
+
+    #[test]
+    fn fence_language_current_not_offered() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), FIXTURE.into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(8, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let has_lua = result.iter().any(|a| {
+            let CodeActionOrCommand::CodeAction(ca) = a else { return false };
+            ca.title == "Set code block language: lua"
+        });
+        assert!(!has_lua);
+    }
+
+    #[test]
+    fn already_formatted_returns_empty_actions() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "short prose\n".into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn remove_taglink_on_cursor_inside() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "see |foo| here\n".into());
+
+        let resp = handlers::handle_code_action(
+            &make_req_at(0, 5, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        assert_eq!(result.len(), 1);
+        let CodeActionOrCommand::CodeAction(action) = &result[0] else {
+            panic!("expected CodeAction")
+        };
+        assert_eq!(action.title, "Remove taglink delimiters");
+    }
+
+    #[test]
+    fn add_taglink_for_known_tag() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "foo is cool\n".into());
+
+        let mut tag_index = TagIndex::default();
+        let tag_uri: Uri = "file:///other.txt".parse().unwrap();
+        tag_index.update_file(&tag_uri, &Document::parse("*foo* heading\n"));
+
+        let resp = handlers::handle_code_action(
+            &make_req_at(0, 0, &uri),
+            &store,
+            &make_config(),
+            &tag_index,
+        );
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        assert_eq!(result.len(), 1);
+        let CodeActionOrCommand::CodeAction(action) = &result[0] else {
+            panic!("expected CodeAction")
+        };
+        assert_eq!(action.title, "Add taglink");
+    }
+
+    #[test]
+    fn no_add_taglink_for_unknown_word() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "unknown word\n".into());
+
+        let resp = handlers::handle_code_action(
+            &make_req_at(0, 0, &uri),
+            &store,
+            &make_config(),
+            &TagIndex::default(),
+        );
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn toc_generated_before_first_separator() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "A *a*\n\nB *b*\n\n==============================\n".into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let toc_action = result.iter().find(|a| {
+            let CodeActionOrCommand::CodeAction(ca) = a else { return false };
+            ca.title == "Generate table of contents"
+        });
+        assert!(toc_action.is_some());
+        let CodeActionOrCommand::CodeAction(action) = toc_action.unwrap() else {
+            unreachable!()
+        };
+        let edits =
+            action.edit.as_ref().unwrap().changes.as_ref().unwrap().values().next().unwrap();
+        assert_eq!(edits[0].range.start.line, 4);
+    }
+
+    #[test]
+    fn toc_not_offered_single_heading() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "Only *one-heading*\n".into());
+
+        let resp =
+            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let has_toc = result.iter().any(|a| {
+            let CodeActionOrCommand::CodeAction(ca) = a else { return false };
+            ca.title == "Generate table of contents"
+        });
+        assert!(!has_toc);
+    }
+
+    #[test]
+    fn toc_not_offered_if_contents_tag_exists() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(
+            uri.clone(),
+            "A *a*\n\nB *b*\n\nContents *test-contents*\n".into(),
+        );
+
+        let resp =
+            handlers::handle_code_action(&make_req(0, &uri), &store, &make_config(), &TagIndex::default());
+        let result: Vec<CodeActionOrCommand> =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let has_toc = result.iter().any(|a| {
+            let CodeActionOrCommand::CodeAction(ca) = a else { return false };
+            ca.title == "Generate table of contents"
+        });
+        assert!(!has_toc);
     }
 }
 

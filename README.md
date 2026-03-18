@@ -53,7 +53,7 @@ vim.lsp.enable('vimdoc_ls')
 - [x] **Document highlight** — highlight all occurrences of a tag under cursor
 - [x] **Document links** — clickable `|taglinks|` with tooltip
 - [x] **Folding** — sections (between separators) and code blocks
-- [ ] **Code actions** — quick fixes and refactors
+- [x] **Code actions** — quick fixes and refactors
 - [ ] **Semantic tokens** — syntax-aware highlighting
 
 ## License

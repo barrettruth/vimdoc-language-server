@@ -144,7 +144,7 @@ fn emit_prose_paragraph(
     j
 }
 
-fn utf16_col_to_byte(s: &str, utf16: usize) -> usize {
+pub(crate) fn utf16_col_to_byte(s: &str, utf16: usize) -> usize {
     let mut col = 0usize;
     for (byte_pos, ch) in s.char_indices() {
         if col >= utf16 {

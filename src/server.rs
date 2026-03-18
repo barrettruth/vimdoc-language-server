@@ -9,9 +9,9 @@ use lsp_types::{
         Notification as LspNotification, PublishDiagnostics,
     },
     request::{
-        Completion, DocumentHighlightRequest, DocumentLinkRequest, DocumentSymbolRequest,
-        FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest, RangeFormatting, References,
-        Rename, Request as LspRequest,
+        CodeActionRequest, Completion, DocumentHighlightRequest, DocumentLinkRequest,
+        DocumentSymbolRequest, FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest,
+        RangeFormatting, References, Rename, Request as LspRequest,
     },
 };
 use serde::Deserialize;
@@ -82,6 +82,9 @@ fn handle_request(
         Formatting::METHOD if config.formatting => handlers::handle_formatting(req, store, config),
         RangeFormatting::METHOD if config.formatting => {
             handlers::handle_range_formatting(req, store, config)
+        }
+        CodeActionRequest::METHOD if config.formatting => {
+            handlers::handle_code_action(req, store, config, tag_index)
         }
         "workspace/symbol" => handlers::handle_workspace_symbol(req, tag_index),
         DocumentSymbolRequest::METHOD => handlers::handle_document_symbol(req, store),
