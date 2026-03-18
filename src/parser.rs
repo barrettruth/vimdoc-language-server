@@ -59,7 +59,6 @@ fn parse_line(line_num: u32, raw: &str, in_code: &mut bool) -> ParsedLine {
     let trimmed = raw.trim_end();
 
     if trimmed.is_empty() {
-        *in_code = false;
         return mk(LineKind::Blank, vec![], vec![]);
     }
 
@@ -139,9 +138,15 @@ fn scan_inline(line_num: u32, raw: &str) -> (Vec<Span>, Vec<Span>) {
                 }
             }
             b'|' => {
-                if let Some((name, end)) = scan_delimited(raw, i + 1, b'|') {
-                    tag_refs.push(make_span(raw, line_num, i, end, name));
-                    i = end;
+                let at_boundary =
+                    i == 0 || matches!(bytes[i - 1], b' ' | b'\t' | b'(' | b'[' | b'|');
+                if at_boundary {
+                    if let Some((name, end)) = scan_delimited(raw, i + 1, b'|') {
+                        tag_refs.push(make_span(raw, line_num, i, end, name));
+                        i = end;
+                    } else {
+                        i += 1;
+                    }
                 } else {
                     i += 1;
                 }
@@ -242,12 +247,61 @@ mod tests {
     }
 
     #[test]
-    fn blank_ends_code_block() {
+    fn unindented_line_ends_code_block() {
         let text = "example >\n    code\n\nnormal";
         let doc = Document::parse(text);
         assert_eq!(doc.lines[1].kind, LineKind::CodeBody);
         assert_eq!(doc.lines[2].kind, LineKind::Blank);
         assert_eq!(doc.lines[3].kind, LineKind::Text);
+    }
+
+    #[test]
+    fn blank_does_not_end_code_block() {
+        let text = "example >\n    code\n\n    more code\n<\nnormal";
+        let doc = Document::parse(text);
+        assert_eq!(doc.lines[1].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[2].kind, LineKind::Blank);
+        assert_eq!(doc.lines[3].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[4].kind, LineKind::CodeBody);
+        assert_eq!(doc.lines[5].kind, LineKind::Text);
+    }
+
+    #[test]
+    fn pipe_in_code_block_after_blank_not_scanned() {
+        let text = "example >\n\n    code with |pipe|\n<";
+        let doc = Document::parse(text);
+        assert_eq!(doc.tag_refs().count(), 0);
+    }
+
+    #[test]
+    fn pipe_mid_word_not_scanned_as_taglink() {
+        let doc = Document::parse("string|fun()|nil");
+        assert_eq!(doc.tag_refs().count(), 0);
+    }
+
+    #[test]
+    fn pipe_after_comma_not_scanned_as_taglink() {
+        let doc = Document::parse("value '+,-,+,|,+,-,+,|'");
+        assert_eq!(doc.tag_refs().count(), 0);
+    }
+
+    #[test]
+    fn pipe_after_backslash_not_scanned_as_taglink() {
+        let doc = Document::parse(r"pattern \|alternative\|");
+        assert_eq!(doc.tag_refs().count(), 0);
+    }
+
+    #[test]
+    fn pipe_after_open_paren_is_taglink() {
+        let doc = Document::parse("(see |my-tag|)");
+        assert_eq!(doc.tag_refs().count(), 1);
+        assert_eq!(doc.tag_refs().next().unwrap().name, "my-tag");
+    }
+
+    #[test]
+    fn pipe_at_line_start_is_taglink() {
+        let doc = Document::parse("|my-tag| description");
+        assert_eq!(doc.tag_refs().count(), 1);
     }
 
     #[test]
