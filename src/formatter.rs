@@ -1,7 +1,34 @@
+use serde::Deserialize;
+
 use crate::parser::{Document, LineKind, SepKind};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReflowMode {
+    #[default]
+    Always,
+    OnlyIfTooLong,
+    Never,
+}
+
+pub struct FormatOptions {
+    pub line_width: usize,
+    pub reflow: ReflowMode,
+    pub normalize_spacing: bool,
+}
+
+impl Default for FormatOptions {
+    fn default() -> Self {
+        Self {
+            line_width: 78,
+            reflow: ReflowMode::default(),
+            normalize_spacing: false,
+        }
+    }
+}
+
 #[must_use]
-pub fn format_document(text: &str, line_width: usize) -> String {
+pub fn format_document(text: &str, opts: &FormatOptions) -> String {
     let doc = Document::parse(text);
     let raw_lines: Vec<&str> = text.lines().collect();
     let n = doc.lines.len();
@@ -20,7 +47,7 @@ pub fn format_document(text: &str, line_width: usize) -> String {
                     SepKind::Major => '=',
                     SepKind::Minor => '-',
                 };
-                out.push(ch.to_string().repeat(line_width));
+                out.push(ch.to_string().repeat(opts.line_width));
                 i += 1;
             }
             LineKind::CodeBody => {
@@ -39,40 +66,24 @@ pub fn format_document(text: &str, line_width: usize) -> String {
                             out.push(raw_lines[i].trim_end().to_string());
                             i += 1;
                         } else {
-                            let mut j = i;
-                            while j < n
-                                && doc.lines[j].kind == LineKind::Text
-                                && doc.lines[j].tag_defs.is_empty()
-                                && leading_whitespace(raw_lines[j]).is_empty()
-                                && !raw_lines[j].contains('\t')
-                            {
-                                j += 1;
-                            }
-                            let num_lines = j - i;
-                            let mut tokens: Vec<(&str, usize)> = Vec::new();
-                            let mut pending_space: usize = 0;
-                            for (idx, line) in raw_lines[i..j].iter().enumerate() {
-                                let is_last_line = idx == num_lines - 1;
-                                let line_tokens = split_words_with_spacing(line);
-                                let len = line_tokens.len();
-                                for (k, (word, trailing)) in line_tokens.into_iter().enumerate() {
-                                    tokens.push((word, pending_space));
-                                    pending_space = if !is_last_line && k == len - 1 {
-                                        1
-                                    } else {
-                                        trailing
-                                    };
+                            match opts.reflow {
+                                ReflowMode::Never => {
+                                    out.push(raw_lines[i].trim_end().to_string());
+                                    i += 1;
+                                }
+                                ReflowMode::Always | ReflowMode::OnlyIfTooLong => {
+                                    i = emit_prose_paragraph(
+                                        &raw_lines, &doc, opts, i, n, &mut out,
+                                    );
                                 }
                             }
-                            reflow_tokens(&tokens, line_width, &mut out);
-                            i = j;
                         }
                     } else {
                         out.push(raw_lines[i].trim_end().to_string());
                         i += 1;
                     }
                 } else {
-                    out.push(format_heading(raw_lines[i], pl, line_width));
+                    out.push(format_heading(raw_lines[i], pl, opts.line_width));
                     i += 1;
                 }
             }
@@ -86,6 +97,53 @@ pub fn format_document(text: &str, line_width: usize) -> String {
     result
 }
 
+fn emit_prose_paragraph(
+    raw_lines: &[&str],
+    doc: &Document,
+    opts: &FormatOptions,
+    start: usize,
+    n: usize,
+    out: &mut Vec<String>,
+) -> usize {
+    let mut j = start;
+    while j < n
+        && doc.lines[j].kind == LineKind::Text
+        && doc.lines[j].tag_defs.is_empty()
+        && leading_whitespace(raw_lines[j]).is_empty()
+        && !raw_lines[j].contains('\t')
+    {
+        j += 1;
+    }
+    if opts.reflow == ReflowMode::OnlyIfTooLong
+        && raw_lines[start..j]
+            .iter()
+            .all(|l| l.len() <= opts.line_width)
+    {
+        for line in &raw_lines[start..j] {
+            out.push(line.trim_end().to_string());
+        }
+        return j;
+    }
+    let num_lines = j - start;
+    let mut tokens: Vec<(&str, usize)> = Vec::new();
+    let mut pending_space: usize = 0;
+    for (idx, line) in raw_lines[start..j].iter().enumerate() {
+        let is_last_line = idx == num_lines - 1;
+        let line_tokens = split_words_with_spacing(line);
+        let len = line_tokens.len();
+        for (k, (word, trailing)) in line_tokens.into_iter().enumerate() {
+            tokens.push((word, pending_space));
+            pending_space = if opts.normalize_spacing || (!is_last_line && k == len - 1) {
+                1
+            } else {
+                trailing
+            };
+        }
+    }
+    reflow_tokens(&tokens, opts.line_width, out);
+    j
+}
+
 fn utf16_col_to_byte(s: &str, utf16: usize) -> usize {
     let mut col = 0usize;
     for (byte_pos, ch) in s.char_indices() {
@@ -97,6 +155,7 @@ fn utf16_col_to_byte(s: &str, utf16: usize) -> usize {
     s.len()
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn format_heading(raw: &str, pl: &crate::parser::ParsedLine, line_width: usize) -> String {
     let tag_start_utf16 = pl.tag_defs[0].range.start.character as usize;
     let tag_start = utf16_col_to_byte(raw, tag_start_utf16);
@@ -182,152 +241,209 @@ mod tests {
 
     #[test]
     fn normalizes_major_separator() {
-        let result = format_document(&"=".repeat(40), 78);
+        let result = format_document(&"=".repeat(40), &FormatOptions::default());
         assert_eq!(result.trim_end(), &"=".repeat(78));
     }
 
     #[test]
     fn normalizes_minor_separator() {
-        let result = format_document(&"-".repeat(40), 78);
+        let result = format_document(&"-".repeat(40), &FormatOptions::default());
         assert_eq!(result.trim_end(), &"-".repeat(78));
     }
 
     #[test]
     fn reflows_prose() {
         let input = "word1 word2\nword3 word4";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, "word1 word2 word3 word4");
     }
 
     #[test]
     fn preserves_code_block() {
         let input = "example >\n    indented code\n<\nafter";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert!(result.contains("    indented code"));
     }
 
     #[test]
     fn idempotent_separator() {
         let input = format!("{}\n", "=".repeat(78));
-        let once = format_document(&input, 78);
-        let twice = format_document(&once, 78);
+        let once = format_document(&input, &FormatOptions::default());
+        let twice = format_document(&once, &FormatOptions::default());
         assert_eq!(once, twice);
     }
 
     #[test]
     fn aligns_heading_tag_right() {
-        let result = format_document("Introduction *intro*\n", 30);
+        let opts = FormatOptions {
+            line_width: 30,
+            ..Default::default()
+        };
+        let result = format_document("Introduction *intro*\n", &opts);
         assert_eq!(result, "Introduction           *intro*\n");
     }
 
     #[test]
     fn heading_tag_at_column_zero_preserved() {
-        let result = format_document("*intro* Introduction\n", 30);
+        let opts = FormatOptions {
+            line_width: 30,
+            ..Default::default()
+        };
+        let result = format_document("*intro* Introduction\n", &opts);
         assert_eq!(result, "*intro* Introduction\n");
     }
 
     #[test]
     fn preserves_code_fence_with_language() {
         let input = "prose\n>lua\n    code()\n<\nafter\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn prose_not_merged_into_code_fence() {
         let input = "This is prose.\n>lua\n    code()\n<\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn heading_tag_fallback_when_line_too_long() {
-        let result = format_document("A very long heading        *tag*\n", 20);
+        let opts = FormatOptions {
+            line_width: 20,
+            ..Default::default()
+        };
+        let result = format_document("A very long heading        *tag*\n", &opts);
         assert_eq!(result, "A very long heading *tag*\n");
     }
 
     #[test]
     fn list_items_not_merged() {
         let input = "- item 1\n- item 2\n- item 3\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn list_item_not_merged_with_preceding_prose() {
         let input = "Prose intro.\n- Item.\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn asterisk_list_item_preserved() {
         let input = "* item text\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn tab_command_ref_preserved() {
         let input = "CTRL-V\t\tInsert next non-digit literally.\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn tab_line_not_merged_with_adjacent_prose() {
         let input = "Prose before.\nCTRL-V\t\tDescription.\nProse after.\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn tab_idempotent() {
         let input = "CTRL-V\t\tInsert next non-digit literally.\n\t\tcontinuation line.\n";
-        let once = format_document(input, 78);
-        let twice = format_document(&once, 78);
+        let once = format_document(input, &FormatOptions::default());
+        let twice = format_document(&once, &FormatOptions::default());
         assert_eq!(once, twice);
     }
 
     #[test]
     fn ordered_list_items_not_merged() {
         let input = "1. First item\n2. Second item\n3. Third item\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn ordered_list_not_merged_with_prose() {
         let input = "Intro text.\n1. First item\n2. Second item\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn double_space_after_period_preserved() {
         let input = "First sentence.  Second sentence.\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn double_space_preserved_during_reflow() {
         let input = "The quick brown fox.  The lazy dog sat.\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
     }
 
     #[test]
     fn line_break_joins_with_single_space() {
         let input = "word1 word2\nword3 word4";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, "word1 word2 word3 word4");
     }
 
     #[test]
     fn multi_space_internal_preserved() {
         let input = "Vi      \"the original\".\n";
-        let result = format_document(input, 78);
+        let result = format_document(input, &FormatOptions::default());
         assert_eq!(result, input);
+    }
+
+    #[test]
+    fn reflow_never_preserves_line_breaks() {
+        let input = "word1 word2\nword3 word4";
+        let opts = FormatOptions {
+            reflow: ReflowMode::Never,
+            ..Default::default()
+        };
+        let result = format_document(input, &opts);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn reflow_only_if_too_long_skips_short_paragraph() {
+        let input = "Short line.\nAnother short line.\n";
+        let opts = FormatOptions {
+            reflow: ReflowMode::OnlyIfTooLong,
+            ..Default::default()
+        };
+        let result = format_document(input, &opts);
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn reflow_only_if_too_long_reflows_overlong_paragraph() {
+        let input = format!("{}\n", "word ".repeat(20).trim_end());
+        let opts = FormatOptions {
+            reflow: ReflowMode::OnlyIfTooLong,
+            ..Default::default()
+        };
+        let result = format_document(&input, &opts);
+        assert_ne!(result, input);
+        assert!(result.lines().all(|l| l.len() <= 78));
+    }
+
+    #[test]
+    fn normalize_spacing_collapses_double_space() {
+        let input = "First sentence.  Second sentence.\n";
+        let opts = FormatOptions {
+            normalize_spacing: true,
+            ..Default::default()
+        };
+        let result = format_document(input, &opts);
+        assert_eq!(result, "First sentence. Second sentence.\n");
     }
 }

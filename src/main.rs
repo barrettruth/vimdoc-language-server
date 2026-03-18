@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use clap::{ArgAction, Parser};
+use clap::{ArgAction, Parser, ValueEnum};
 use lsp_server::Connection;
 use lsp_types::{
     CompletionOptions, InitializeParams, OneOf, ServerCapabilities, TextDocumentSyncCapability,
@@ -10,9 +10,28 @@ use lsp_types::{
 use tracing_subscriber::EnvFilter;
 
 use vimdoc_language_server::{
+    formatter::ReflowMode,
     server::{self, Config, InitOptions},
     tags::TagIndex,
 };
+
+#[derive(Clone, Copy, ValueEnum)]
+enum CliReflowMode {
+    Always,
+    #[value(name = "only-if-too-long")]
+    OnlyIfTooLong,
+    Never,
+}
+
+impl From<CliReflowMode> for ReflowMode {
+    fn from(m: CliReflowMode) -> Self {
+        match m {
+            CliReflowMode::Always => ReflowMode::Always,
+            CliReflowMode::OnlyIfTooLong => ReflowMode::OnlyIfTooLong,
+            CliReflowMode::Never => ReflowMode::Never,
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(version, about = "Language server for vim help files")]
@@ -29,6 +48,12 @@ struct Cli {
 
     #[arg(long)]
     no_formatting: bool,
+
+    #[arg(long, value_enum, default_value = "always")]
+    reflow: CliReflowMode,
+
+    #[arg(long)]
+    normalize_spacing: bool,
 
     #[arg(long)]
     no_diagnostics: bool,
@@ -130,10 +155,12 @@ fn main() -> Result<()> {
     tag_paths.extend(init_opts.tag_paths);
 
     let config = Config {
-        line_width: cli.line_width,
-        formatting: !cli.no_formatting,
-        diagnostics: !cli.no_diagnostics,
-        hover: !cli.no_hover,
+        line_width: init_opts.line_width.unwrap_or(cli.line_width),
+        formatting: init_opts.formatting.unwrap_or(!cli.no_formatting),
+        reflow: init_opts.reflow.unwrap_or_else(|| cli.reflow.into()),
+        normalize_spacing: init_opts.normalize_spacing.unwrap_or(cli.normalize_spacing),
+        diagnostics: init_opts.diagnostics.unwrap_or(!cli.no_diagnostics),
+        hover: init_opts.hover.unwrap_or(!cli.no_hover),
         runtime_tags: init_opts.runtime_tags.unwrap_or(!cli.no_runtime_tags),
         tag_paths,
     };
@@ -174,6 +201,8 @@ fn main() -> Result<()> {
     tracing::info!(
         line_width = config.line_width,
         formatting = config.formatting,
+        reflow = ?config.reflow,
+        normalize_spacing = config.normalize_spacing,
         diagnostics = config.diagnostics,
         hover = config.hover,
         "server initialized"
