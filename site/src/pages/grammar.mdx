@@ -1,0 +1,128 @@
+---
+layout: ../layouts/DocLayout.astro
+title: Grammar Reference
+toc: true
+---
+
+# Grammar Reference
+
+This page describes the vimdoc constructs that vimdoc-ls recognizes. It is an
+accurate description of the current parser — not a normative specification of
+the vimdoc format.
+
+## Separators
+
+A line consisting entirely of `=` or `-` characters, with a minimum length of
+10, is a separator.
+
+| Kind  | Character | Minimum length | `LineKind`                  |
+| ----- | --------- | -------------- | --------------------------- |
+| Major | `=`       | 10             | `Separator(SepKind::Major)` |
+| Minor | `-`       | 10             | `Separator(SepKind::Minor)` |
+
+```
+================================================================================
+--------------------------------------------------------------------------------
+```
+
+The formatter normalizes separators to `line_width` characters (default: 78).
+
+## Tags
+
+A tag is a named anchor — the target of navigation and cross-references.
+
+**Pattern:** `*name*`
+
+- `name` must be non-empty and contain no whitespace or tab characters.
+- Multiple tags may appear on one line.
+- Tags are conventionally right-aligned to `line_width`.
+
+```
+*my-plugin*   *my-plugin-intro*
+```
+
+## Taglinks
+
+A taglink is a reference to a tag.
+
+**Pattern:** `|name|`
+
+- `name` must be non-empty and contain no whitespace.
+- The opening `|` must appear at a word boundary: line start, or immediately
+  preceded by a space, tab, `(`, `[`, or `|`.
+- Taglinks inside backtick spans are not scanned.
+
+```
+See |my-plugin| for details.
+```
+
+## Code Blocks
+
+Code block content is treated as verbatim — no tag scanning, no reformatting.
+
+### Inline fence
+
+A prose line whose trimmed content ends with `>` (but not `->`) opens a code
+block. The `>` may appear anywhere on the line.
+
+```
+The following example: >
+    some_function()
+<
+```
+
+### Named fence
+
+A line whose entire trimmed content matches `>lang` — where `lang` is one or
+more characters from `[A-Za-z0-9_+-]` — opens a named code block.
+
+```
+>lua
+    vim.fn.input()
+<
+```
+
+Named fences support identifiers such as `>lua`, `>vim`, `>python`, `>c`,
+`>c++`, `>lua54`, and `>objective-c`.
+
+### Termination
+
+A code block ends at the first of:
+
+1. A `<` character alone on a line.
+2. Any non-blank line that begins at column 0 (unindented).
+
+Blank lines within a code block do not end it — the block continues if the
+next non-blank line is indented.
+
+## List Items
+
+Lines recognized as list items are preserved as-is and not reflowed together
+with adjacent prose.
+
+| Prefix | Kind                              |
+| ------ | --------------------------------- |
+| `- `   | Unordered (dash)                  |
+| `* `   | Unordered (asterisk)              |
+| `• `   | Unordered (Unicode bullet U+2022) |
+| `N. `  | Ordered (N = one or more digits)  |
+
+**Disambiguation rules:**
+
+- `* text` is a list item only if the line contains no tag definition. A line
+  like `*my-tag* Introduction` is `Text`, not a list item.
+- `N. text` is a list item only if the line contains no tag definition. A line
+  like `1. Introduction		*intro*` is `Text`.
+
+## Backtick Spans
+
+Content between backticks is skipped during tag scanning.
+
+**Pattern:** `` `content` ``
+
+A `|pipe|` pattern inside a backtick span is not recognized as a taglink.
+
+## Blank Lines
+
+An empty line or a line containing only whitespace is classified as `Blank`.
+Blank lines do not terminate code blocks.
