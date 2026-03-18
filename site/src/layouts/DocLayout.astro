@@ -2,9 +2,12 @@
 import "../styles/base.css";
 const fm = Astro.props.frontmatter || Astro.props;
 const title = fm.title;
-const description = fm.description || "vimdoc-language-server documentation";
+const description = fm.description || "help for help files";
+const toc = fm.toc ?? false;
+const headings = Astro.props.headings ?? [];
 const isIndex =
   Astro.url.pathname === "/" || Astro.url.pathname === "/index.html";
+const h2s = headings.filter((h) => h.depth === 2);
 ---
 
 <!doctype html>
@@ -18,7 +21,7 @@ const isIndex =
   <body>
     {
       !isIndex && (
-        <nav>
+        <nav class={toc ? "with-toc" : ""}>
           <a class="title" href="/">
             vimdoc-ls
           </a>
@@ -28,8 +31,27 @@ const isIndex =
       )
     }
 
-    <main>
-      <slot />
-    </main>
+    {
+      toc ? (
+        <div class="page-with-toc">
+          <aside class="toc-nav">
+            <ul>
+              {h2s.map((h) => (
+                <li>
+                  <a href={`#${h.slug}`}>{h.text}</a>
+                </li>
+              ))}
+            </ul>
+          </aside>
+          <main>
+            <slot />
+          </main>
+        </div>
+      ) : (
+        <main>
+          <slot />
+        </main>
+      )
+    }
   </body>
 </html>

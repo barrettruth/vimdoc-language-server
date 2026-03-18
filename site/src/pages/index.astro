@@ -1,9 +1,13 @@
 ---
+import { Code } from "astro:components";
 import DocLayout from "../layouts/DocLayout.astro";
+import { midnight, daylight } from "../themes.mjs";
 ---
 
-<DocLayout title="">
+<DocLayout title="" description="help for help files">
   <h1>vimdoc-language-server</h1>
+
+  <p class="tagline">help for help files</p>
 
   <p>
     Language server for vim help files. Formatting, diagnostics, navigation,
@@ -19,12 +23,16 @@ import DocLayout from "../layouts/DocLayout.astro";
 
   <h2>Setup</h2>
 
-  <pre><code class="language-lua">vim.lsp.config('vimdoc_ls', &#123;
-  cmd = &#123; 'vimdoc-language-server' &#125;,
-  filetypes = &#123; 'help' &#125;,
-  root_markers = &#123; 'doc', '.git' &#125;,
-&#125;)
-vim.lsp.enable('vimdoc_ls')</code></pre>
+  <Code
+    code={`vim.lsp.config('vimdoc_ls', {
+  cmd = { 'vimdoc-language-server' },
+  filetypes = { 'help' },
+  root_markers = { 'doc', '.git' },
+})
+vim.lsp.enable('vimdoc_ls')`}
+    lang="lua"
+    themes={{ light: daylight, dark: midnight }}
+  />
 
   <h2>Documentation</h2>
 

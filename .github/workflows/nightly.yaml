@@ -1,0 +1,66 @@
+name: Nightly
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  quality:
+    uses: ./.github/workflows/quality.yaml
+
+  test:
+    uses: ./.github/workflows/test.yaml
+
+  dist:
+    name: Build (${{ matrix.target }})
+    needs: [quality, test]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: vimdoc-language-server-linux-x86_64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact: vimdoc-language-server-macos-aarch64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact: vimdoc-language-server-macos-x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --target ${{ matrix.target }}
+      - name: Rename binary
+        run: cp target/${{ matrix.target }}/release/vimdoc-language-server ${{ matrix.artifact }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  nightly:
+    needs: dist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move nightly tag
+        run: |
+          git tag -f nightly
+          git push origin nightly --force
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly (${{ github.sha }})
+          prerelease: true
+          make_latest: false
+          files: artifacts/*
