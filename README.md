@@ -54,7 +54,6 @@ vim.lsp.enable('vimdoc_ls')
 - [x] **Document links** — clickable `|taglinks|` with tooltip
 - [x] **Folding** — sections (between separators) and code blocks
 - [x] **Code actions** — quick fixes and refactors
-- [ ] **Semantic tokens** — syntax-aware highlighting
 
 ## License
 
