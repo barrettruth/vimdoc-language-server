@@ -1322,7 +1322,7 @@ mod pull_diagnostics {
         };
         assert_eq!(report.items.len(), 2);
 
-        let uris: Vec<&str> = report
+        let reported_uris: Vec<&str> = report
             .items
             .iter()
             .map(|item| {
@@ -1332,8 +1332,8 @@ mod pull_diagnostics {
                 full.uri.as_str()
             })
             .collect();
-        assert!(uris.contains(&"file:///a.txt"));
-        assert!(uris.contains(&"file:///b.txt"));
+        assert!(reported_uris.contains(&"file:///a.txt"));
+        assert!(reported_uris.contains(&"file:///b.txt"));
     }
 
     #[test]
