@@ -166,6 +166,7 @@ pre,
 code,
 .astro-code {
   font-family: "Berkeley Mono", monospace !important;
+  font-variant-ligatures: none;
 }
 
 code {
