@@ -51,7 +51,7 @@ vim.api.nvim_create_autocmd('FileType', {
 - [x] **Formatting** — separator normalization, prose reflow, heading alignment;
       range formatting supported
 - [x] **Diagnostics** — duplicate `*tag*` definitions (same-file and
-      cross-file), unresolved `|taglinks|`; push and pull (workspace-wide)
+      cross-file), unresolved `|taglinks|`; push, pull, and CLI (`--check`)
 - [x] **Completion** — tag completion triggered by `|`, context-aware
 - [x] **Hover** — tag definition context in a floating window
 - [x] **Go-to-definition** — `|tag-ref|` to `*tag*`, same-file and cross-file

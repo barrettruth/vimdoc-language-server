@@ -24,6 +24,13 @@ Supports both push diagnostics (on open/change) and pull diagnostics
 (`textDocument/diagnostic` and `workspace/diagnostic`), so clients can
 request diagnostics for the entire workspace without opening every file.
 
+Use `--check <path>` to run diagnostics from the command line without an
+editor, useful for CI pipelines:
+
+```sh
+vimdoc-language-server --check doc/
+```
+
 ## Document symbols
 
 Lists all `*tag*` definitions in the current file as a flat symbol list.

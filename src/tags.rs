@@ -134,6 +134,21 @@ impl TagIndex {
     }
 
     #[allow(clippy::missing_errors_doc)]
+    pub fn scan_directory(&mut self, dir: &Path) -> Result<()> {
+        let pattern = dir.join("**/*.txt");
+        let pattern_str = pattern.to_str().ok_or_else(|| anyhow!("non-UTF-8 path"))?;
+        for entry in glob::glob(pattern_str)? {
+            let path = entry?;
+            if let Ok(text) = fs::read_to_string(&path) {
+                let uri = path_to_uri(&path)?;
+                let doc = Document::parse(&text);
+                self.update_file(&uri, &doc);
+            }
+        }
+        Ok(())
+    }
+
+    #[allow(clippy::missing_errors_doc)]
     pub fn scan_workspace(&mut self, root: &Path) -> Result<()> {
         let pattern = root.join("doc/**/*.txt");
         let pattern_str = pattern.to_str().ok_or_else(|| anyhow!("non-UTF-8 path"))?;

@@ -10,6 +10,7 @@ use lsp_types::{
 use tracing_subscriber::EnvFilter;
 
 use vimdoc_language_server::{
+    diagnostics,
     formatter::ReflowMode,
     server::{self, Config, InitOptions},
     tags::TagIndex,
@@ -69,6 +70,9 @@ struct Cli {
 
     #[arg(long)]
     no_runtime_tags: bool,
+
+    #[arg(long, value_name = "PATH")]
+    check: Option<PathBuf>,
 }
 
 fn server_capabilities(cli: &Cli) -> ServerCapabilities {
@@ -160,12 +164,69 @@ fn load_pack_tags(tag_index: &mut TagIndex, runtime: &Path) {
     }
 }
 
+fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
+    let mut tag_index = TagIndex::new();
+    tag_index.scan_directory(dir)?;
+
+    for tp in &cli.tag_path {
+        server::load_tag_path(&mut tag_index, tp);
+    }
+
+    if !cli.no_runtime_tags {
+        if let Ok(runtime) = std::env::var("VIMRUNTIME") {
+            let runtime_path = Path::new(&runtime);
+            let tags_file = runtime_path.join("doc/tags");
+            if tags_file.exists() {
+                let _ = tag_index.load_tags_file(&tags_file);
+            }
+            load_pack_tags(&mut tag_index, runtime_path);
+        }
+    }
+
+    let mut total = 0u32;
+    let mut files_with_diags = 0u32;
+    let dir_abs = std::fs::canonicalize(dir)?;
+
+    for (uri, doc) in tag_index.workspace_docs() {
+        let diags = diagnostics::compute(doc, &tag_index, uri);
+        if diags.is_empty() {
+            continue;
+        }
+        files_with_diags += 1;
+        let display_path = server::uri_to_path(uri)
+            .and_then(|p| p.strip_prefix(&dir_abs).ok().map(Path::to_path_buf))
+            .map_or_else(|| uri.as_str().to_string(), |p| p.display().to_string());
+        for d in &diags {
+            let line = d.range.start.line + 1;
+            let code = d.code.as_ref().map_or("warning".to_string(), |c| match c {
+                lsp_types::NumberOrString::String(s) => s.clone(),
+                lsp_types::NumberOrString::Number(n) => n.to_string(),
+            });
+            eprintln!("{display_path}:{line}: [{code}] {}", d.message);
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            total += diags.len() as u32;
+        }
+    }
+
+    eprintln!("{total} warnings in {files_with_diags} file(s)");
+    if total > 0 {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if cli.print_config_schema {
         println!("{{}}");
         return Ok(());
+    }
+
+    if let Some(ref dir) = cli.check {
+        return run_check(dir, &cli);
     }
 
     init_tracing(&cli)?;
