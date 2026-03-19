@@ -1,3 +1,5 @@
+use std::fs;
+
 use anyhow::{Result, anyhow};
 use lsp_server::Response;
 use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind};
@@ -34,18 +36,20 @@ pub fn handle_hover(
             return Ok(None);
         };
 
-        let text = if def_uri == uri {
-            store.get(&def_uri).map(|(t, _)| t.to_string())
+        let owned_text;
+        let owned_doc;
+        let (def_text, def_doc) = if let Some((t, d)) = store.get(&def_uri) {
+            (t, d)
         } else {
-            uri_to_path(&def_uri).and_then(|p| std::fs::read_to_string(p).ok())
+            let Some(t) = uri_to_path(&def_uri).and_then(|p| fs::read_to_string(p).ok()) else {
+                return Ok(None);
+            };
+            owned_text = t;
+            owned_doc = Document::parse(&owned_text);
+            (owned_text.as_str(), &owned_doc)
         };
 
-        let Some(text) = text else {
-            return Ok(None);
-        };
-
-        let def_doc = Document::parse(&text);
-        let Some(context) = extract_hover_context(&def_doc, &text, def_range.start.line) else {
+        let Some(context) = extract_hover_context(def_doc, def_text, def_range.start.line) else {
             return Ok(None);
         };
 
