@@ -72,7 +72,8 @@ vim.lsp.config('vimdoc_ls', {
 
 The `FileType` autocmd is needed because `vim.lsp.enable()` skips buffers
 where `buftype` is not empty. Help buffers have `buftype=help`, so
-`vim.lsp.start()` must be called directly.
+`vim.lsp.start()` must be called directly. A fix is in progress upstream
+([neovim#38379](https://github.com/neovim/neovim/pull/38379)).
 
 The server activates on the `help` filetype. When a workspace root is found
 via `root_markers`, cross-file features (diagnostics, references, rename) span
