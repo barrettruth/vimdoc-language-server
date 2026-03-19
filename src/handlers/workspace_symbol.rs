@@ -16,9 +16,11 @@ pub fn handle_workspace_symbol(req: &lsp_server::Request, tag_index: &mut TagInd
             .map(|(name, entry)| make_symbol(name, entry))
             .collect();
 
-        for (name, entry) in tag_index.resolve_external_entries() {
-            if query.is_empty() || name.to_lowercase().contains(&query) {
-                symbols.push(make_symbol(&name, &entry));
+        if !query.is_empty() {
+            for (name, entry) in tag_index.resolve_external_entries() {
+                if name.to_lowercase().contains(&query) {
+                    symbols.push(make_symbol(&name, &entry));
+                }
             }
         }
 
