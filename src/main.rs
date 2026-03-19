@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use clap::{ArgAction, Parser, ValueEnum};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use lsp_server::Connection;
 use lsp_types::{
     CompletionOptions, DiagnosticOptions, DiagnosticServerCapabilities, InitializeParams, OneOf,
@@ -38,14 +38,23 @@ impl From<CliReflowMode> for ReflowMode {
 #[command(version, about = "Language server for vim help files")]
 #[allow(clippy::struct_excessive_bools)]
 struct Cli {
-    #[arg(long, short = 'v', action = ArgAction::Count)]
+    #[arg(long, short = 'v', action = ArgAction::Count, global = true)]
     verbose: u8,
 
-    #[arg(long, value_name = "PATH")]
+    #[arg(long, value_name = "PATH", global = true)]
     log_file: Option<PathBuf>,
 
-    #[arg(long, default_value_t = 78, value_name = "N")]
+    #[arg(long, default_value_t = 78, value_name = "N", global = true)]
     line_width: usize,
+
+    #[arg(long, value_name = "PATH", global = true)]
+    tag_path: Vec<PathBuf>,
+
+    #[arg(long, global = true)]
+    no_runtime_tags: bool,
+
+    #[command(subcommand)]
+    command: Option<Command>,
 
     #[arg(long)]
     no_formatting: bool,
@@ -64,15 +73,16 @@ struct Cli {
 
     #[arg(long)]
     print_config_schema: bool,
+}
 
-    #[arg(long, value_name = "PATH")]
-    tag_path: Vec<PathBuf>,
+#[derive(Subcommand)]
+enum Command {
+    Check(CheckArgs),
+}
 
-    #[arg(long)]
-    no_runtime_tags: bool,
-
-    #[arg(long, value_name = "PATH")]
-    check: Option<PathBuf>,
+#[derive(Args)]
+struct CheckArgs {
+    path: PathBuf,
 }
 
 fn server_capabilities(cli: &Cli) -> ServerCapabilities {
@@ -225,8 +235,8 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    if let Some(ref dir) = cli.check {
-        return run_check(dir, &cli);
+    if let Some(Command::Check(ref args)) = cli.command {
+        return run_check(&args.path, &cli);
     }
 
     init_tracing(&cli)?;
