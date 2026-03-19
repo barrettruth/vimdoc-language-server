@@ -20,6 +20,10 @@ Reports duplicate `*tag*` definitions (same-file and cross-file) and
 unresolved `|taglink|` references. See [Diagnostics](/diagnostics) for
 details.
 
+Supports both push diagnostics (on open/change) and pull diagnostics
+(`textDocument/diagnostic` and `workspace/diagnostic`), so clients can
+request diagnostics for the entire workspace without opening every file.
+
 ## Document symbols
 
 Lists all `*tag*` definitions in the current file as a flat symbol list.

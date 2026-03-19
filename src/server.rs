@@ -9,9 +9,10 @@ use lsp_types::{
         Notification as LspNotification, PublishDiagnostics,
     },
     request::{
-        CodeActionRequest, Completion, DocumentHighlightRequest, DocumentLinkRequest,
-        DocumentSymbolRequest, FoldingRangeRequest, Formatting, GotoDefinition, HoverRequest,
-        RangeFormatting, References, Rename, Request as LspRequest,
+        CodeActionRequest, Completion, DocumentDiagnosticRequest, DocumentHighlightRequest,
+        DocumentLinkRequest, DocumentSymbolRequest, FoldingRangeRequest, Formatting,
+        GotoDefinition, HoverRequest, RangeFormatting, References, Rename, Request as LspRequest,
+        WorkspaceDiagnosticRequest,
     },
 };
 use serde::Deserialize;
@@ -95,6 +96,12 @@ fn handle_request(
         References::METHOD => handlers::handle_references(req, store, tag_index),
         Rename::METHOD => handlers::handle_rename(req, store, tag_index),
         "textDocument/prepareRename" => handlers::handle_prepare_rename(req, store),
+        DocumentDiagnosticRequest::METHOD if config.diagnostics => {
+            handlers::handle_document_diagnostic(req, store, tag_index)
+        }
+        WorkspaceDiagnosticRequest::METHOD if config.diagnostics => {
+            handlers::handle_workspace_diagnostic(req, tag_index)
+        }
         _ => Response {
             id: req.id.clone(),
             result: None,
