@@ -51,8 +51,14 @@ Produces: `unresolved tag reference: |nonexistent-tag|`.
 
 ### Reducing false positives
 
-The server scans `|...|` patterns as potential taglinks. Some valid vimdoc
-content uses pipes in non-taglink contexts:
+Both tag definitions (`*...*`) and tag references (`|...|`) use boundary
+checks to avoid false positives. A `*tag*` is only recognized when the
+opening `*` is preceded by whitespace or the start of the line. A `|tag|`
+requires the same for the opening `|`. This prevents glob patterns
+(`*.o,*`), quoted filenames (`"*termcap*"`), and path patterns
+(`pack/*/start/*`) from being misidentified as tags.
+
+Some valid vimdoc content uses pipes in non-taglink contexts:
 
 - Vim regex alternation: `\|` inside code blocks
 - Lua type unions: `string|fun(...)|nil`
@@ -62,7 +68,7 @@ If a code block is separated from its `>` opener by a blank line, the
 server may not recognize the code context and flag pipes as unresolved tags.
 
 To eliminate false positives from external Vim documentation, load the runtime
-tags:
+tags (enabled by default):
 
 ```lua
 init_options = {
