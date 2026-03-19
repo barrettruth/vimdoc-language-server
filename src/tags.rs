@@ -83,6 +83,11 @@ impl TagIndex {
         self.workspace_docs.iter()
     }
 
+    #[must_use]
+    pub fn workspace_doc(&self, uri: &Uri) -> Option<&Document> {
+        self.workspace_docs.get(uri)
+    }
+
     pub fn workspace_entries(&self) -> impl Iterator<Item = (&str, &TagEntry)> {
         self.workspace
             .iter()

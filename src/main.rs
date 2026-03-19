@@ -4,8 +4,8 @@ use anyhow::Result;
 use clap::{ArgAction, Parser, ValueEnum};
 use lsp_server::Connection;
 use lsp_types::{
-    CompletionOptions, InitializeParams, OneOf, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind,
+    CompletionOptions, DiagnosticOptions, DiagnosticServerCapabilities, InitializeParams, OneOf,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
 };
 use tracing_subscriber::EnvFilter;
 
@@ -108,6 +108,16 @@ fn server_capabilities(cli: &Cli) -> ServerCapabilities {
             work_done_progress_options: lsp_types::WorkDoneProgressOptions::default(),
         }),
         code_action_provider: Some(lsp_types::CodeActionProviderCapability::Simple(true)),
+        diagnostic_provider: if cli.no_diagnostics {
+            None
+        } else {
+            Some(DiagnosticServerCapabilities::Options(DiagnosticOptions {
+                identifier: Some("vimdoc".into()),
+                inter_file_dependencies: true,
+                workspace_diagnostics: true,
+                work_done_progress_options: lsp_types::WorkDoneProgressOptions::default(),
+            }))
+        },
         ..Default::default()
     }
 }

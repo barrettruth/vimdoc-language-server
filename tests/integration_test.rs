@@ -1201,6 +1201,164 @@ mod code_action {
     }
 }
 
+mod pull_diagnostics {
+    use super::*;
+
+    #[test]
+    fn document_diagnostic_returns_full_report() {
+        let mut store = Store::default();
+        let uri: Uri = "file:///test.txt".parse().unwrap();
+        store.open(uri.clone(), "*foo* heading\n*foo* duplicate\n".into());
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/diagnostic".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() }
+            }),
+        };
+
+        let tag_index = TagIndex::default();
+        let resp = handlers::handle_document_diagnostic(&req, &store, &tag_index);
+        let result: lsp_types::DocumentDiagnosticReportResult =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let lsp_types::DocumentDiagnosticReportResult::Report(
+            lsp_types::DocumentDiagnosticReport::Full(report),
+        ) = result
+        else {
+            panic!("expected full report")
+        };
+        assert_eq!(report.full_document_diagnostic_report.items.len(), 2);
+        assert!(
+            report
+                .full_document_diagnostic_report
+                .items
+                .iter()
+                .all(|d| d.code == Some(NumberOrString::String("duplicate-tag".into())))
+        );
+    }
+
+    #[test]
+    fn document_diagnostic_uses_workspace_docs_fallback() {
+        let store = Store::default();
+        let uri: Uri = "file:///ws.txt".parse().unwrap();
+        let doc = Document::parse("|missing| ref\n");
+        let mut tag_index = TagIndex::default();
+        tag_index.update_file(&uri, &doc);
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/diagnostic".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() }
+            }),
+        };
+
+        let resp = handlers::handle_document_diagnostic(&req, &store, &tag_index);
+        let result: lsp_types::DocumentDiagnosticReportResult =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let lsp_types::DocumentDiagnosticReportResult::Report(
+            lsp_types::DocumentDiagnosticReport::Full(report),
+        ) = result
+        else {
+            panic!("expected full report")
+        };
+        assert_eq!(report.full_document_diagnostic_report.items.len(), 1);
+    }
+
+    #[test]
+    fn document_diagnostic_unknown_uri_returns_empty() {
+        let store = Store::default();
+        let uri: Uri = "file:///unknown.txt".parse().unwrap();
+        let tag_index = TagIndex::default();
+
+        let req = Request {
+            id: 1.into(),
+            method: "textDocument/diagnostic".into(),
+            params: json!({
+                "textDocument": { "uri": uri.as_str() }
+            }),
+        };
+
+        let resp = handlers::handle_document_diagnostic(&req, &store, &tag_index);
+        let result: lsp_types::DocumentDiagnosticReportResult =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let lsp_types::DocumentDiagnosticReportResult::Report(
+            lsp_types::DocumentDiagnosticReport::Full(report),
+        ) = result
+        else {
+            panic!("expected full report")
+        };
+        assert!(report.full_document_diagnostic_report.items.is_empty());
+    }
+
+    #[test]
+    fn workspace_diagnostic_returns_all_files() {
+        let uri1: Uri = "file:///a.txt".parse().unwrap();
+        let uri2: Uri = "file:///b.txt".parse().unwrap();
+        let doc1 = Document::parse("*foo* heading\n");
+        let doc2 = Document::parse("|missing| ref\n");
+        let mut tag_index = TagIndex::default();
+        tag_index.update_file(&uri1, &doc1);
+        tag_index.update_file(&uri2, &doc2);
+
+        let req = Request {
+            id: 1.into(),
+            method: "workspace/diagnostic".into(),
+            params: json!({
+                "previousResultIds": []
+            }),
+        };
+
+        let resp = handlers::handle_workspace_diagnostic(&req, &tag_index);
+        let result: lsp_types::WorkspaceDiagnosticReportResult =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let lsp_types::WorkspaceDiagnosticReportResult::Report(report) = result else {
+            panic!("expected report")
+        };
+        assert_eq!(report.items.len(), 2);
+
+        let reported_uris: Vec<&str> = report
+            .items
+            .iter()
+            .map(|item| {
+                let lsp_types::WorkspaceDocumentDiagnosticReport::Full(full) = item else {
+                    panic!("expected full")
+                };
+                full.uri.as_str()
+            })
+            .collect();
+        assert!(reported_uris.contains(&"file:///a.txt"));
+        assert!(reported_uris.contains(&"file:///b.txt"));
+    }
+
+    #[test]
+    fn workspace_diagnostic_empty_workspace() {
+        let tag_index = TagIndex::default();
+
+        let req = Request {
+            id: 1.into(),
+            method: "workspace/diagnostic".into(),
+            params: json!({
+                "previousResultIds": []
+            }),
+        };
+
+        let resp = handlers::handle_workspace_diagnostic(&req, &tag_index);
+        let result: lsp_types::WorkspaceDiagnosticReportResult =
+            serde_json::from_value(resp.result.unwrap()).unwrap();
+
+        let lsp_types::WorkspaceDiagnosticReportResult::Report(report) = result else {
+            panic!("expected report")
+        };
+        assert!(report.items.is_empty());
+    }
+}
+
 mod diagnostics_tests {
     use super::*;
 
