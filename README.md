@@ -33,6 +33,7 @@ Configure `vimdoc-language-server` in your editor of choice, for example with
 vim.lsp.config('vimdoc_ls', {
   cmd = { 'vimdoc-language-server' },
   filetypes = { 'help' },
+  -- buftypes = { 'help' },
   root_markers = { 'doc', '.git' },
   workspace_required = false,
 })

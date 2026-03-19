@@ -43,6 +43,7 @@ Using the built-in LSP client (Neovim 0.11+):
 vim.lsp.config('vimdoc_ls', {
   cmd = { 'vimdoc-language-server' },
   filetypes = { 'help' },
+  -- buftypes = { 'help' },
   root_markers = { 'doc', '.git' },
   workspace_required = false,
 })
@@ -61,6 +62,7 @@ Pass `initializationOptions` to configure the server:
 vim.lsp.config('vimdoc_ls', {
   cmd = { 'vimdoc-language-server' },
   filetypes = { 'help' },
+  -- buftypes = { 'help' },
   root_markers = { 'doc', '.git' },
   workspace_required = false,
   init_options = {
@@ -70,12 +72,5 @@ vim.lsp.config('vimdoc_ls', {
 })
 ```
 
-The `FileType` autocmd is needed because `vim.lsp.enable()` skips buffers
-where `buftype` is not empty. Help buffers have `buftype=help`, so
-`vim.lsp.start()` must be called directly. A fix is in progress upstream
-([neovim#38379](https://github.com/neovim/neovim/pull/38379)).
-
-The server activates on the `help` filetype. When a workspace root is found
-via `root_markers`, cross-file features (diagnostics, references, rename) span
-the workspace. Without a root (e.g. reading `:help`), the server still provides
-formatting, hover, go-to-definition, and completion via external tag files.
+The `FileType` autocmd is temporarily needed because `vim.lsp.enable()` skips
+`buftype=help` buffers (tracked in [neovim#38380](https://github.com/neovim/neovim/issues/38380)).
