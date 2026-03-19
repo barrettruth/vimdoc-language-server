@@ -136,9 +136,14 @@ fn scan_inline(line_num: u32, raw: &str) -> (Vec<Span>, Vec<Span>) {
     while i < len {
         match bytes[i] {
             b'*' => {
-                if let Some((name, end)) = scan_delimited(raw, i + 1, b'*') {
-                    tag_defs.push(make_span(raw, line_num, i, end, name));
-                    i = end;
+                let at_boundary = i == 0 || matches!(bytes[i - 1], b' ' | b'\t');
+                if at_boundary {
+                    if let Some((name, end)) = scan_delimited(raw, i + 1, b'*') {
+                        tag_defs.push(make_span(raw, line_num, i, end, name));
+                        i = end;
+                    } else {
+                        i += 1;
+                    }
                 } else {
                     i += 1;
                 }
@@ -313,6 +318,30 @@ mod tests {
     #[test]
     fn no_tag_with_space() {
         let doc = Document::parse("* not a tag *");
+        assert_eq!(doc.tag_defs().count(), 0);
+    }
+
+    #[test]
+    fn inline_glob_not_tag_def() {
+        let doc = Document::parse("set wildignore=*.o,*.obj");
+        assert_eq!(doc.tag_defs().count(), 0);
+    }
+
+    #[test]
+    fn quoted_glob_not_tag_def() {
+        let doc = Document::parse(r#"the patterns "*printcap*", or "*termcap*""#);
+        assert_eq!(doc.tag_defs().count(), 0);
+    }
+
+    #[test]
+    fn path_pattern_not_tag_def() {
+        let doc = Document::parse(r#"located in "pack/*/start/*" dirs"#);
+        assert_eq!(doc.tag_defs().count(), 0);
+    }
+
+    #[test]
+    fn printf_format_not_tag_def() {
+        let doc = Document::parse(r#"echo printf("%1$*2$.*3$d", 1, 2, 3)"#);
         assert_eq!(doc.tag_defs().count(), 0);
     }
 
