@@ -173,7 +173,7 @@ pub fn parse_tags_file(path: &Path) -> Result<Vec<(String, ExternalTag)>> {
     let mut entries = Vec::new();
 
     for line in content.lines() {
-        if line.starts_with('!') || line.is_empty() {
+        if line.starts_with("!_TAG_") || line.is_empty() {
             continue;
         }
         let mut parts = line.splitn(3, '\t');
