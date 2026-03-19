@@ -13,8 +13,6 @@ use crate::server::{Config, make_response, text_end_position};
 use crate::store::Store;
 use crate::tags::TagIndex;
 
-const LANGUAGES: &[&str] = &["lua", "vim", "python", "sh", "bash", "c", "go", "rust"];
-
 #[allow(clippy::mutable_key_type)]
 fn make_action(
     title: &str,
@@ -159,75 +157,6 @@ fn collect_separator_convert(
             ));
         }
         _ => {}
-    }
-}
-
-fn find_fence_start(doc: &Document, raw_lines: &[&str], cursor_line: usize) -> Option<usize> {
-    if cursor_line >= doc.lines.len() {
-        return None;
-    }
-    if !matches!(doc.lines[cursor_line].kind, LineKind::CodeBody) {
-        return None;
-    }
-    let mut i = cursor_line;
-    loop {
-        match doc.lines[i].kind {
-            LineKind::CodeBody => {
-                let raw = raw_lines[i].trim_end();
-                if raw.len() > 1
-                    && raw.starts_with('>')
-                    && raw[1..].bytes().all(|b| b.is_ascii_alphabetic())
-                {
-                    return Some(i);
-                }
-            }
-            LineKind::Blank => {}
-            _ => return None,
-        }
-        if i == 0 {
-            return None;
-        }
-        i -= 1;
-    }
-}
-
-#[allow(clippy::cast_possible_truncation)]
-fn collect_fence_language_actions(
-    actions: &mut Vec<CodeActionOrCommand>,
-    doc: &Document,
-    raw_lines: &[&str],
-    cursor_line: usize,
-    _config: &Config,
-    uri: &Uri,
-) {
-    let Some(fence_idx) = find_fence_start(doc, raw_lines, cursor_line) else {
-        return;
-    };
-    let current_lang = raw_lines[fence_idx].trim_end()[1..].to_string();
-    let end_char = text_end_position(raw_lines[fence_idx]).character;
-    let fence_range = Range {
-        start: Position {
-            line: fence_idx as u32,
-            character: 0,
-        },
-        end: Position {
-            line: fence_idx as u32,
-            character: end_char,
-        },
-    };
-    for &lang in LANGUAGES {
-        if lang == current_lang {
-            continue;
-        }
-        actions.push(make_action(
-            &format!("Set code block language: {lang}"),
-            CodeActionKind::REFACTOR,
-            uri,
-            TextEdit {
-                range: fence_range,
-                new_text: format!(">{lang}"),
-            },
-        ));
     }
 }
 
@@ -477,7 +406,6 @@ pub fn handle_code_action(
         let mut actions = Vec::new();
         collect_format_action(&mut actions, doc, &raw_lines, cursor_line, config, &uri);
         collect_separator_convert(&mut actions, doc, &raw_lines, cursor_line, config, &uri);
-        collect_fence_language_actions(&mut actions, doc, &raw_lines, cursor_line, config, &uri);
         collect_taglink_toggle(
             &mut actions,
             doc,
