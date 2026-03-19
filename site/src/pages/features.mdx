@@ -23,12 +23,10 @@ details.
 ## Document symbols
 
 Lists all `*tag*` definitions in the current file as a flat symbol list.
-Accessible via `:lua vim.lsp.buf.document_symbol()` or outline plugins.
 
 ## Workspace symbols
 
-Searches `*tag*` definitions across all workspace files. Accessible via
-`:lua vim.lsp.buf.workspace_symbol('query')`.
+Searches `*tag*` definitions across all workspace files.
 
 ## Go-to-definition
 
@@ -57,7 +55,7 @@ Finds all `|taglink|` references to a tag across workspace files. With
 
 Renames a `*tag*` and all its `|taglink|` references across the workspace.
 Validates that the new name contains no whitespace and does not conflict with
-an existing tag. Accessed via `:lua vim.lsp.buf.rename()`.
+an existing tag.
 
 `prepareRename` returns the tag name without delimiters, so your editor
 shows `tag-name` rather than `*tag-name*` or `|tag-name|`.
@@ -77,10 +75,26 @@ showing the tag name.
 ## Folding
 
 Sections between separator lines (`===`/`---`) fold as regions. Code blocks
-(`>` to `<` or EOF) fold independently. Accessible via `zc`/`zo` or
-`:set foldmethod=expr`.
+(`>` to `<` or EOF) fold independently.
 
 ## Range formatting
 
 Formats a selected region instead of the full document. Same rules as
 full-document formatting, applied to the selected lines.
+
+## Code actions
+
+- **Format this block** — applies the formatter to the block under the cursor.
+  Offered on prose, headings, list items, and separators when formatting would
+  produce a change.
+- **Convert to minor separator** — replaces `===` with `---`. Offered on major
+  separator lines.
+- **Convert to major separator** — replaces `---` with `===`. Offered on minor
+  separator lines.
+- **Remove taglink delimiters** — strips `|...|` to leave the bare name.
+  Offered when the cursor is on a `|taglink|`.
+- **Add taglink** — wraps a bare word in `|...|`. Offered when the word under
+  the cursor matches a known tag in the workspace or external tag files.
+- **Generate table of contents** — builds a dot-filled TOC from tagged headings
+  and inserts it before the first major separator. Offered when the file has
+  two or more tagged headings and no existing `*...-contents*` tag.
