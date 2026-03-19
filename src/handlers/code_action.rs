@@ -7,7 +7,7 @@ use lsp_types::{
     Uri, WorkspaceEdit,
 };
 
-use crate::formatter::{self, FormatOptions, utf16_col_to_byte};
+use crate::formatter::{self, FormatOptions, display_width, utf16_col_to_byte};
 use crate::parser::{Document, LineKind, SepKind, byte_offset_to_utf16};
 use crate::server::{Config, make_response, text_end_position};
 use crate::store::Store;
@@ -301,21 +301,19 @@ fn derive_contents_tag(uri: &Uri) -> String {
 
 fn format_toc_header(left: &str, tag: &str, line_width: usize) -> String {
     let right = format!("*{tag}*");
-    let used = left.len() + right.len();
-    if line_width > used + 1 {
-        format!(
-            "{left}{}{right}",
-            " ".repeat(line_width - left.len() - right.len())
-        )
-    } else {
+    let left_w = display_width(left);
+    let right_w = display_width(&right);
+    if left_w + 1 + right_w >= line_width {
         format!("{left} {right}")
+    } else {
+        format!("{left}{}{right}", " ".repeat(line_width - left_w - right_w))
     }
 }
 
 fn format_toc_entry(title: &str, tag: &str, line_width: usize) -> String {
     let indent = "    ";
     let tag_link = format!("|{tag}|");
-    let used = indent.len() + title.len() + tag_link.len();
+    let used = indent.len() + display_width(title) + display_width(&tag_link);
     if line_width > used + 3 {
         format!("{indent}{title}{}{tag_link}", ".".repeat(line_width - used))
     } else {

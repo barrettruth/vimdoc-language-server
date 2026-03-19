@@ -27,6 +27,10 @@ impl Default for FormatOptions {
     }
 }
 
+pub(crate) fn display_width(s: &str) -> usize {
+    s.chars().count()
+}
+
 #[must_use]
 pub fn format_document(text: &str, opts: &FormatOptions) -> String {
     let doc = Document::parse(text);
@@ -117,7 +121,7 @@ fn emit_prose_paragraph(
     if opts.reflow == ReflowMode::OnlyIfTooLong
         && raw_lines[start..j]
             .iter()
-            .all(|l| l.len() <= opts.line_width)
+            .all(|l| display_width(l) <= opts.line_width)
     {
         for line in &raw_lines[start..j] {
             out.push(line.trim_end().to_string());
@@ -172,11 +176,11 @@ fn format_heading(raw: &str, pl: &crate::parser::ParsedLine, line_width: usize) 
         .collect::<Vec<_>>()
         .join(" ");
 
-    if left.len() + 1 + right.len() >= line_width {
+    if display_width(left) + 1 + display_width(&right) >= line_width {
         return format!("{left} {right}");
     }
 
-    let spaces = line_width - left.len() - right.len();
+    let spaces = line_width - display_width(left) - display_width(&right);
     format!("{left}{}{right}", " ".repeat(spaces))
 }
 
@@ -219,8 +223,8 @@ fn reflow_tokens(tokens: &[(&str, usize)], line_width: usize, out: &mut Vec<Stri
         let pre_space = *pre_space;
         if line.is_empty() {
             line.push_str(word);
-        } else if line.len() + 1 + word.len() <= line_width {
-            let sp = pre_space.min(line_width - line.len() - word.len());
+        } else if display_width(&line) + 1 + display_width(word) <= line_width {
+            let sp = pre_space.min(line_width - display_width(&line) - display_width(word));
             for _ in 0..sp {
                 line.push(' ');
             }
