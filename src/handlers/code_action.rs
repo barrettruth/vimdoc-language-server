@@ -75,6 +75,9 @@ fn collect_format_action(
     config: &Config,
     uri: &Uri,
 ) {
+    if !config.formatting {
+        return;
+    }
     let Some((start, end)) = find_block_range(doc, cursor_line) else {
         return;
     };
