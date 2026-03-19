@@ -34,8 +34,15 @@ vim.lsp.config('vimdoc_ls', {
   cmd = { 'vimdoc-language-server' },
   filetypes = { 'help' },
   root_markers = { 'doc', '.git' },
+  workspace_required = false,
 })
-vim.lsp.enable('vimdoc_ls')
+
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'help',
+  callback = function()
+    vim.lsp.start(vim.lsp.config['vimdoc_ls'])
+  end,
+})
 ```
 
 ## Features
