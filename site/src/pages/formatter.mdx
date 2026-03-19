@@ -85,7 +85,7 @@ A paragraph is reflowed only if at least one of its lines exceeds
 ### `never`
 
 No prose reflow. Lines are trimmed of trailing whitespace but line breaks are
-preserved.
+preserved. Separator normalization and heading alignment still apply.
 
 ## Spacing
 
@@ -111,9 +111,6 @@ regardless of the `normalizeSpacing` setting.
 
 - List item _continuation_ lines may be merged into prose if they are
   not indented
-- `>language` on its own line (without preceding text) may not be recognized
-  as a code fence opener
-- Heading alignment uses byte length for spacing math — CJK headings may
-  align incorrectly
-- Prose reflow uses byte length for line-width decisions — multibyte words may
-  cause lines to exceed the target width
+- CJK double-width characters are counted as single-width for alignment
+  and reflow decisions — theoretical for vimdoc, where CJK does not appear
+  in headings or prose
