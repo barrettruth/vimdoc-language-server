@@ -89,6 +89,22 @@ impl TagIndex {
             .flat_map(|(name, entries)| entries.iter().map(move |e| (name.as_str(), e)))
     }
 
+    pub fn resolve_external_entries(&mut self) -> Vec<(String, TagEntry)> {
+        let names: Vec<String> = self
+            .external
+            .keys()
+            .filter(|name| !self.workspace.contains_key(*name))
+            .cloned()
+            .collect();
+        let mut results = Vec::new();
+        for name in names {
+            if let Some(entry) = self.resolve_external(&name) {
+                results.push((name, entry));
+            }
+        }
+        results
+    }
+
     #[must_use]
     pub fn find_references(&self, name: &str) -> Vec<TagEntry> {
         let mut refs = Vec::new();
