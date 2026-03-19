@@ -147,6 +147,19 @@ fn init_tracing(cli: &Cli) -> Result<()> {
     Ok(())
 }
 
+fn load_pack_tags(tag_index: &mut TagIndex, runtime: &Path) {
+    for subdir in &["pack/*/opt/*/doc/tags", "pack/*/start/*/doc/tags"] {
+        let pattern = runtime.join(subdir);
+        if let Some(s) = pattern.to_str() {
+            for path in glob::glob(s).into_iter().flatten().flatten() {
+                if let Err(e) = tag_index.load_tags_file(&path) {
+                    tracing::warn!(path = %path.display(), error = %e, "failed to load pack tags");
+                }
+            }
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -213,12 +226,14 @@ fn main() -> Result<()> {
 
     if config.runtime_tags {
         if let Ok(runtime) = std::env::var("VIMRUNTIME") {
-            let tags_file = Path::new(&runtime).join("doc/tags");
+            let runtime_path = Path::new(&runtime);
+            let tags_file = runtime_path.join("doc/tags");
             if tags_file.exists() {
                 if let Err(e) = tag_index.load_tags_file(&tags_file) {
                     tracing::warn!(path = %tags_file.display(), error = %e, "failed to load runtime tags");
                 }
             }
+            load_pack_tags(&mut tag_index, runtime_path);
         }
     }
 
