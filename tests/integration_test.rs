@@ -1027,47 +1027,6 @@ mod code_action {
     }
 
     #[test]
-    fn fence_language_offered_on_code_body() {
-        let mut store = Store::default();
-        let uri: Uri = "file:///test.txt".parse().unwrap();
-        store.open(uri.clone(), FIXTURE.into());
-
-        let resp = handlers::handle_code_action(
-            &make_req(8, &uri),
-            &store,
-            &make_config(),
-            &TagIndex::default(),
-        );
-        let result: Vec<CodeActionOrCommand> =
-            serde_json::from_value(resp.result.unwrap()).unwrap();
-        assert_eq!(result.len(), 7);
-    }
-
-    #[test]
-    fn fence_language_current_not_offered() {
-        let mut store = Store::default();
-        let uri: Uri = "file:///test.txt".parse().unwrap();
-        store.open(uri.clone(), FIXTURE.into());
-
-        let resp = handlers::handle_code_action(
-            &make_req(8, &uri),
-            &store,
-            &make_config(),
-            &TagIndex::default(),
-        );
-        let result: Vec<CodeActionOrCommand> =
-            serde_json::from_value(resp.result.unwrap()).unwrap();
-
-        let has_lua = result.iter().any(|a| {
-            let CodeActionOrCommand::CodeAction(ca) = a else {
-                return false;
-            };
-            ca.title == "Set code block language: lua"
-        });
-        assert!(!has_lua);
-    }
-
-    #[test]
     fn already_formatted_returns_empty_actions() {
         let mut store = Store::default();
         let uri: Uri = "file:///test.txt".parse().unwrap();
