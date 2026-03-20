@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    text {
+      font-family: monospace;
+      font-size: 22px;
+      font-weight: bold;
+      fill: #1a1a1a;
+    }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e0e0e0; }
+    }
+  </style>
+  <text x="16" y="24" text-anchor="middle">:h</text>
+</svg>
