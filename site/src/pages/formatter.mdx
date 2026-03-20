@@ -114,3 +114,6 @@ regardless of the `normalizeSpacing` setting.
 - CJK double-width characters are counted as single-width for alignment
   and reflow decisions — theoretical for vimdoc, where CJK does not appear
   in headings or prose
+- Indented lines are treated as verbatim and never reflowed or truncated.
+  If an indented line exceeds `line_width` (e.g. a TOC entry with a long
+  title, or a command reference with a wide description), it is left as-is
