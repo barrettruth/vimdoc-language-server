@@ -13,7 +13,7 @@ use vimdoc_language_server::{
     diagnostics,
     formatter::ReflowMode,
     server::{self, Config, InitOptions},
-    tags::TagIndex,
+    tags::{self, TagIndex},
 };
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -53,7 +53,7 @@ struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
 
-    #[arg(long)]
+    #[arg(long, global = true)]
     no_runtime_tags: bool,
 
     #[arg(long)]
@@ -83,9 +83,6 @@ enum Command {
 #[derive(Args)]
 struct CheckArgs {
     path: PathBuf,
-
-    #[arg(long)]
-    runtime_tags: bool,
 }
 
 fn server_capabilities(cli: &Cli) -> ServerCapabilities {
@@ -164,58 +161,7 @@ fn init_tracing(cli: &Cli) -> Result<()> {
     Ok(())
 }
 
-fn load_pack_tags(tag_index: &mut TagIndex, runtime: &Path) {
-    for subdir in &["pack/*/opt/*/doc/tags", "pack/*/start/*/doc/tags"] {
-        let pattern = runtime.join(subdir);
-        if let Some(s) = pattern.to_str() {
-            for path in glob::glob(s).into_iter().flatten().flatten() {
-                if let Err(e) = tag_index.load_tags_file(&path) {
-                    tracing::warn!(path = %path.display(), error = %e, "failed to load pack tags");
-                }
-            }
-        }
-    }
-}
-
-fn discover_vimruntime() -> Option<PathBuf> {
-    if let Ok(val) = std::env::var("VIMRUNTIME") {
-        let p = PathBuf::from(val);
-        if p.join("doc/tags").exists() {
-            return Some(p);
-        }
-    }
-    let output = std::process::Command::new("nvim")
-        .args([
-            "--headless",
-            "--clean",
-            "-c",
-            "echo $VIMRUNTIME",
-            "-c",
-            "qa",
-        ])
-        .output()
-        .ok()?;
-    let path = String::from_utf8(output.stderr).ok()?.trim().to_string();
-    if path.is_empty() {
-        return None;
-    }
-    let p = PathBuf::from(path);
-    if p.join("doc/tags").exists() {
-        Some(p)
-    } else {
-        None
-    }
-}
-
-fn load_runtime_tags(tag_index: &mut TagIndex, runtime: &Path) {
-    let tags_file = runtime.join("doc/tags");
-    if tags_file.exists() {
-        let _ = tag_index.load_tags_file(&tags_file);
-    }
-    load_pack_tags(tag_index, runtime);
-}
-
-fn run_check(dir: &Path, args: &CheckArgs, cli: &Cli) -> Result<()> {
+fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
     let mut tag_index = TagIndex::new();
     tag_index.scan_directory(dir)?;
 
@@ -223,11 +169,9 @@ fn run_check(dir: &Path, args: &CheckArgs, cli: &Cli) -> Result<()> {
         server::load_tag_path(&mut tag_index, tp);
     }
 
-    if args.runtime_tags {
-        if let Some(runtime_path) = discover_vimruntime() {
-            load_runtime_tags(&mut tag_index, &runtime_path);
-        } else {
-            eprintln!("warning: --runtime-tags: could not discover $VIMRUNTIME");
+    if !cli.no_runtime_tags {
+        if let Some(runtime_path) = tags::discover_vimruntime() {
+            tag_index.load_runtime_tags(&runtime_path)?;
         }
     }
 
@@ -274,7 +218,7 @@ fn main() -> Result<()> {
     }
 
     if let Some(Command::Check(ref args)) = cli.command {
-        return run_check(&args.path, args, &cli);
+        return run_check(&args.path, &cli);
     }
 
     init_tracing(&cli)?;
@@ -334,10 +278,12 @@ fn main() -> Result<()> {
     }
 
     if config.runtime_tags {
-        if let Ok(runtime) = std::env::var("VIMRUNTIME") {
-            load_runtime_tags(&mut tag_index, Path::new(&runtime));
+        if let Some(runtime_path) = tags::discover_vimruntime() {
+            if let Err(e) = tag_index.load_runtime_tags(&runtime_path) {
+                tracing::warn!(error = %e, "failed to load runtime tags");
+            }
         } else {
-            tracing::warn!("$VIMRUNTIME not set, runtime tags not loaded");
+            tracing::warn!("could not discover $VIMRUNTIME, runtime tags not loaded");
         }
     }
 

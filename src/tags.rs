@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use anyhow::{Result, anyhow};
 use lsp_types::{Range, Uri};
@@ -172,6 +173,23 @@ impl TagIndex {
         Ok(())
     }
 
+    #[allow(clippy::missing_errors_doc)]
+    pub fn load_runtime_tags(&mut self, runtime: &Path) -> Result<()> {
+        let tags_file = runtime.join("doc/tags");
+        if tags_file.exists() {
+            self.load_tags_file(&tags_file)?;
+        }
+        for subdir in &["pack/*/opt/*/doc/tags", "pack/*/start/*/doc/tags"] {
+            let pattern = runtime.join(subdir);
+            if let Some(s) = pattern.to_str() {
+                for path in glob::glob(s).into_iter().flatten().flatten() {
+                    self.load_tags_file(&path)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn resolve_external(&mut self, name: &str) -> Option<TagEntry> {
         let externals = self.external.get(name)?;
         for ext in externals.clone() {
@@ -199,6 +217,37 @@ impl TagIndex {
             self.external_cache.insert(path.clone(), doc);
         }
         self.external_cache.get(path)
+    }
+}
+
+#[must_use]
+pub fn discover_vimruntime() -> Option<PathBuf> {
+    if let Ok(val) = std::env::var("VIMRUNTIME") {
+        let p = PathBuf::from(val);
+        if p.join("doc/tags").exists() {
+            return Some(p);
+        }
+    }
+    let output = Command::new("nvim")
+        .args([
+            "--headless",
+            "--clean",
+            "-c",
+            "echo $VIMRUNTIME",
+            "-c",
+            "qa",
+        ])
+        .output()
+        .ok()?;
+    let path = String::from_utf8(output.stderr).ok()?.trim().to_string();
+    if path.is_empty() {
+        return None;
+    }
+    let p = PathBuf::from(path);
+    if p.join("doc/tags").exists() {
+        Some(p)
+    } else {
+        None
     }
 }
 
