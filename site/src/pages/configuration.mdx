@@ -11,18 +11,19 @@ takes precedence.
 
 ## CLI flags
 
-| Flag                  | Default  | Description                                                          |
-| --------------------- | -------- | -------------------------------------------------------------------- |
-| `-v`, `--verbose`     | warn     | Log verbosity. Repeat for more: `-v` info, `-vv` debug, `-vvv` trace |
-| `--log-file PATH`     | stderr   | Write logs to a file instead of stderr                               |
-| `--line-width N`      | `78`     | Target line width for formatting                                     |
-| `--no-formatting`     | off      | Disable formatting                                                   |
-| `--reflow MODE`       | `always` | Prose reflow mode: `always`, `only-if-too-long`, `never`             |
-| `--normalize-spacing` | off      | Collapse multiple spaces to single space                             |
-| `--no-diagnostics`    | off      | Disable diagnostics                                                  |
-| `--no-hover`          | off      | Disable hover                                                        |
-| `--tag-path PATH`     | —        | Path to a Vim `tags` file or directory containing one. Repeatable    |
-| `--no-runtime-tags`   | off      | Skip loading `$VIMRUNTIME/doc/tags`                                  |
+| Flag                    | Default  | Description                                                          |
+| ----------------------- | -------- | -------------------------------------------------------------------- |
+| `-v`, `--verbose`       | warn     | Log verbosity. Repeat for more: `-v` info, `-vv` debug, `-vvv` trace |
+| `--log-file PATH`       | stderr   | Write logs to a file instead of stderr                               |
+| `--line-width N`        | `78`     | Target line width for formatting                                     |
+| `--[no-]formatting`     | on       | Enable or disable formatting                                         |
+| `--reflow MODE`         | `always` | Prose reflow mode: `always`, `only-if-too-long`, `never`             |
+| `--normalize-spacing`   | off      | Collapse multiple spaces to single space                             |
+| `--[no-]diagnostics`    | on       | Enable or disable diagnostics                                        |
+| `--[no-]hover`          | on       | Enable or disable hover                                              |
+| `--tag-path PATH`       | —        | Path to a Vim `tags` file or directory containing one. Repeatable    |
+| `--[no-]runtime-tags`   | on       | Load or skip `$VIMRUNTIME/doc/tags`                                  |
+| `--print-config-schema` | —        | Print the JSON schema for `initializationOptions` and exit           |
 
 ## initializationOptions
 
