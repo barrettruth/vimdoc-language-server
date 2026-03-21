@@ -57,5 +57,59 @@ function formatTocText(text: string): string {
     <main>
       <slot />
     </main>
+
+    <script>
+      const links = document.querySelectorAll(".toc-nav a");
+      if (links.length) {
+        const ids = Array.from(links).map((a) =>
+          a.getAttribute("href")!.slice(1),
+        );
+        const sections = ids
+          .map((id) => document.getElementById(id))
+          .filter(Boolean) as HTMLElement[];
+
+        let clickLock = false;
+        let scrollTimer: number;
+
+        function activate(id: string) {
+          links.forEach((a) => {
+            a.classList.toggle("active", a.getAttribute("href") === `#${id}`);
+          });
+        }
+
+        links.forEach((a) => {
+          a.addEventListener("click", () => {
+            activate(a.getAttribute("href")!.slice(1));
+            clickLock = true;
+          });
+        });
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            if (clickLock) return;
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                activate(entry.target.id);
+                break;
+              }
+            }
+          },
+          { rootMargin: "0px 0px -60% 0px" },
+        );
+
+        sections.forEach((s) => observer.observe(s));
+
+        window.addEventListener(
+          "scroll",
+          () => {
+            clearTimeout(scrollTimer);
+            scrollTimer = window.setTimeout(() => {
+              clickLock = false;
+            }, 150);
+          },
+          { passive: true },
+        );
+      }
+    </script>
   </body>
 </html>
