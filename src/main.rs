@@ -83,6 +83,12 @@ struct Cli {
     #[arg(long, overrides_with = "hover")]
     no_hover: bool,
 
+    #[arg(long, overrides_with = "no_color", global = true)]
+    color: bool,
+
+    #[arg(long, overrides_with = "color", global = true)]
+    no_color: bool,
+
     #[arg(long)]
     print_config_schema: bool,
 }
@@ -173,6 +179,34 @@ fn init_tracing(cli: &Cli) -> Result<()> {
     Ok(())
 }
 
+fn resolve_color(cli: &Cli) -> bool {
+    use std::io::IsTerminal;
+    if cli.no_color || std::env::var_os("NO_COLOR").is_some() {
+        return false;
+    }
+    if cli.color {
+        return true;
+    }
+    if std::env::var_os("CLICOLOR_FORCE").is_some() {
+        return true;
+    }
+    if std::env::var("CLICOLOR").as_deref() == Ok("0") {
+        return false;
+    }
+    if std::env::var("TERM").as_deref() == Ok("dumb") {
+        return false;
+    }
+    std::io::stdout().is_terminal()
+}
+
+fn colorize(text: &str, codes: &str, use_color: bool) -> String {
+    if use_color {
+        format!("\x1b[{codes}m{text}\x1b[0m")
+    } else {
+        text.to_string()
+    }
+}
+
 fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
     let mut tag_index = TagIndex::new();
     tag_index.scan_directory(dir)?;
@@ -187,6 +221,7 @@ fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
         }
     }
 
+    let use_color = resolve_color(cli);
     let mut total = 0u32;
     let mut files_with_diags = 0u32;
     let dir_abs = std::fs::canonicalize(dir)?;
@@ -207,7 +242,13 @@ fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
                 lsp_types::NumberOrString::String(s) => s.clone(),
                 lsp_types::NumberOrString::Number(n) => n.to_string(),
             });
-            println!("{display_path}:{line}:{col}: [{code}] {}", d.message);
+            let loc = format!("{display_path}:{line}:{col}");
+            println!(
+                "{}: {} {}",
+                colorize(&loc, "1", use_color),
+                colorize(&format!("[{code}]"), "1;33", use_color),
+                d.message,
+            );
         }
         #[allow(clippy::cast_possible_truncation)]
         {
@@ -215,7 +256,15 @@ fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
         }
     }
 
-    println!("{total} warnings in {files_with_diags} file(s)");
+    let summary = format!("{total} warnings in {files_with_diags} file(s)");
+    println!(
+        "{}",
+        colorize(
+            &summary,
+            if total == 0 { "1;32" } else { "1;33" },
+            use_color
+        )
+    );
     if total > 0 {
         std::process::exit(1);
     }
