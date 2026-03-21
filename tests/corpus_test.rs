@@ -111,6 +111,6 @@ fn diagnostics_no_panic_on_neovim_corpus() {
             continue;
         };
         let doc = Document::parse(&text);
-        let _ = diagnostics::compute(&doc, &tag_index, &uri);
+        let _ = diagnostics::compute(&doc, &tag_index, &uri, &Default::default());
     }
 }
