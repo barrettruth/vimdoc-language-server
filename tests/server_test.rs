@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use lsp_server::{Connection, Message, Notification, Request};
 use serde_json::json;
 use std::thread::{self, JoinHandle};
@@ -16,7 +18,7 @@ fn default_config() -> Config {
         hover: true,
         runtime_tags: false,
         tag_paths: vec![],
-        diagnostic_levels: Default::default(),
+        diagnostic_levels: HashMap::new(),
     }
 }
 

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use expect_test::expect;
 use lsp_server::Request;
 use lsp_types::{
@@ -746,7 +748,7 @@ mod formatting {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
-            diagnostic_levels: Default::default(),
+            diagnostic_levels: HashMap::new(),
         };
 
         let resp = handlers::handle_formatting(&req, &store, &config);
@@ -777,7 +779,7 @@ mod formatting {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
-            diagnostic_levels: Default::default(),
+            diagnostic_levels: HashMap::new(),
         };
 
         let resp = handlers::handle_formatting(&req, &store, &config);
@@ -818,7 +820,7 @@ mod formatting {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
-            diagnostic_levels: Default::default(),
+            diagnostic_levels: HashMap::new(),
         };
 
         let resp = handlers::handle_range_formatting(&req, &store, &config);
@@ -858,7 +860,7 @@ mod formatting {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
-            diagnostic_levels: Default::default(),
+            diagnostic_levels: HashMap::new(),
         };
 
         let resp = handlers::handle_range_formatting(&req, &store, &config);
@@ -881,7 +883,7 @@ mod code_action {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
-            diagnostic_levels: Default::default(),
+            diagnostic_levels: HashMap::new(),
         }
     }
 
@@ -1219,7 +1221,7 @@ mod pull_diagnostics {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
-            diagnostic_levels: Default::default(),
+            diagnostic_levels: HashMap::new(),
         }
     }
 
@@ -1392,7 +1394,7 @@ mod diagnostics_tests {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         let doc = Document::parse("*foo* first\n*foo* second\n vim:tw=78:ts=8:ft=help:norl:\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index, &uri, &Default::default());
+        let diags = diagnostics::compute(&doc, &tag_index, &uri, &HashMap::new());
 
         assert_eq!(diags.len(), 2);
         assert!(
@@ -1407,7 +1409,7 @@ mod diagnostics_tests {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         let doc = Document::parse("|missing| ref\n vim:tw=78:ts=8:ft=help:norl:\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index, &uri, &Default::default());
+        let diags = diagnostics::compute(&doc, &tag_index, &uri, &HashMap::new());
 
         assert_eq!(diags.len(), 1);
         assert_eq!(
@@ -1421,7 +1423,7 @@ mod diagnostics_tests {
         let uri: Uri = "file:///test.txt".parse().unwrap();
         let doc = Document::parse("*foo* def\nsee |foo| here\n vim:tw=78:ts=8:ft=help:norl:\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index, &uri, &Default::default());
+        let diags = diagnostics::compute(&doc, &tag_index, &uri, &HashMap::new());
 
         assert!(diags.is_empty());
     }
@@ -1434,7 +1436,7 @@ mod diagnostics_tests {
         let doc2 = Document::parse("*foo* other\n vim:tw=78:ts=8:ft=help:norl:\n");
         let mut tag_index = TagIndex::default();
         tag_index.update_file(&uri2, &doc2);
-        let diags = diagnostics::compute(&doc1, &tag_index, &uri1, &Default::default());
+        let diags = diagnostics::compute(&doc1, &tag_index, &uri1, &HashMap::new());
 
         assert_eq!(diags.len(), 1);
         assert_eq!(
