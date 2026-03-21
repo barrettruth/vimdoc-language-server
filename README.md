@@ -65,6 +65,6 @@ vim.api.nvim_create_autocmd('FileType', {
 - [x] **Folding** — sections (between separators) and code blocks
 - [x] **Code actions** — quick fixes and refactors
 
-## License
+## Acknowledgements
 
-[MIT](LICENSE)
+- [@skewb1k](https://github.com/skewb1k) - pull diagnostics deduplication fix
