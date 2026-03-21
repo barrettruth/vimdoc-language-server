@@ -53,10 +53,16 @@ struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
 
-    #[arg(long, global = true)]
+    #[arg(long, overrides_with = "no_runtime_tags", global = true)]
+    runtime_tags: bool,
+
+    #[arg(long, overrides_with = "runtime_tags", global = true)]
     no_runtime_tags: bool,
 
-    #[arg(long)]
+    #[arg(long, overrides_with = "no_formatting")]
+    formatting: bool,
+
+    #[arg(long, overrides_with = "formatting")]
     no_formatting: bool,
 
     #[arg(long, value_enum, default_value = "always")]
@@ -65,10 +71,16 @@ struct Cli {
     #[arg(long)]
     normalize_spacing: bool,
 
-    #[arg(long)]
+    #[arg(long, overrides_with = "no_diagnostics")]
+    diagnostics: bool,
+
+    #[arg(long, overrides_with = "diagnostics")]
     no_diagnostics: bool,
 
-    #[arg(long)]
+    #[arg(long, overrides_with = "no_hover")]
+    hover: bool,
+
+    #[arg(long, overrides_with = "hover")]
     no_hover: bool,
 
     #[arg(long)]
@@ -190,11 +202,12 @@ fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
             .map_or_else(|| uri.as_str().to_string(), |p| p.display().to_string());
         for d in &diags {
             let line = d.range.start.line + 1;
+            let col = d.range.start.character + 1;
             let code = d.code.as_ref().map_or("warning".to_string(), |c| match c {
                 lsp_types::NumberOrString::String(s) => s.clone(),
                 lsp_types::NumberOrString::Number(n) => n.to_string(),
             });
-            eprintln!("{display_path}:{line}: [{code}] {}", d.message);
+            println!("{display_path}:{line}:{col}: [{code}] {}", d.message);
         }
         #[allow(clippy::cast_possible_truncation)]
         {
@@ -202,10 +215,67 @@ fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
         }
     }
 
-    eprintln!("{total} warnings in {files_with_diags} file(s)");
+    println!("{total} warnings in {files_with_diags} file(s)");
     if total > 0 {
         std::process::exit(1);
     }
+    Ok(())
+}
+
+fn print_config_schema() -> Result<()> {
+    let schema = serde_json::json!({
+        "$schema": "https://json-schema.org/draft-07/schema",
+        "title": "vimdoc-language-server",
+        "description": "initializationOptions for vimdoc-language-server",
+        "type": "object",
+        "properties": {
+            "lineWidth": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 78,
+                "description": "Target line width for formatting"
+            },
+            "formatting": {
+                "type": "boolean",
+                "default": true,
+                "description": "Enable document formatting"
+            },
+            "reflow": {
+                "type": "string",
+                "enum": ["always", "only-if-too-long", "never"],
+                "default": "always",
+                "description": "Prose reflow mode"
+            },
+            "normalizeSpacing": {
+                "type": "boolean",
+                "default": false,
+                "description": "Normalize spacing between sentences"
+            },
+            "diagnostics": {
+                "type": "boolean",
+                "default": true,
+                "description": "Enable diagnostics"
+            },
+            "hover": {
+                "type": "boolean",
+                "default": true,
+                "description": "Enable hover"
+            },
+            "runtimeTags": {
+                "type": "boolean",
+                "default": true,
+                "description": "Load tags from $VIMRUNTIME/doc/tags"
+            },
+            "tagPaths": {
+                "type": "array",
+                "items": { "type": "string" },
+                "default": [],
+                "description": "Additional Vim tags file paths to load"
+            }
+        },
+        "additionalProperties": false
+    });
+    println!("{}", serde_json::to_string_pretty(&schema)?);
     Ok(())
 }
 
@@ -213,8 +283,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if cli.print_config_schema {
-        println!("{{}}");
-        return Ok(());
+        return print_config_schema();
     }
 
     if let Some(Command::Check(ref args)) = cli.command {
