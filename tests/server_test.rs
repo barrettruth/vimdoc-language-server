@@ -15,6 +15,7 @@ fn default_config() -> Config {
         reflow: vimdoc_language_server::formatter::ReflowMode::Always,
         normalize_spacing: false,
         diagnostics: false,
+        publish_diagnostics: true,
         hover: true,
         runtime_tags: false,
         tag_paths: vec![],
@@ -343,6 +344,54 @@ fn no_diagnostics_suppresses_notification() {
         }
         Message::Notification(n) if n.method == "textDocument/publishDiagnostics" => {
             panic!("unexpected diagnostics notification when diagnostics disabled");
+        }
+        other => panic!("unexpected message: {other:?}"),
+    }
+
+    shutdown(conn, handle);
+}
+
+#[test]
+fn pull_diagnostics_suppresses_push() {
+    let config = Config {
+        diagnostics: true,
+        publish_diagnostics: false,
+        ..default_config()
+    };
+    let (conn, handle) = spawn_server(config);
+    let uri = "file:///test.txt";
+
+    conn.sender
+        .send(Message::Notification(Notification {
+            method: "textDocument/didOpen".into(),
+            params: json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vimdoc",
+                    "version": 1,
+                    "text": "*dup* a\n*dup* b\n vim:tw=78:ts=8:ft=help:norl:\n"
+                }
+            }),
+        }))
+        .expect("send didOpen");
+
+    conn.sender
+        .send(Message::Request(Request {
+            id: 2.into(),
+            method: "textDocument/documentSymbol".into(),
+            params: json!({"textDocument": {"uri": uri}}),
+        }))
+        .expect("send documentSymbol");
+
+    let msg = conn.receiver.recv().expect("recv");
+    match msg {
+        Message::Response(r) => {
+            let symbols: Vec<serde_json::Value> =
+                serde_json::from_value(r.result.unwrap()).unwrap();
+            assert_eq!(symbols.len(), 2);
+        }
+        Message::Notification(n) if n.method == "textDocument/publishDiagnostics" => {
+            panic!("unexpected push when client supports pull diagnostics");
         }
         other => panic!("unexpected message: {other:?}"),
     }

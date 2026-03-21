@@ -31,6 +31,7 @@ pub struct Config {
     pub reflow: ReflowMode,
     pub normalize_spacing: bool,
     pub diagnostics: bool,
+    pub publish_diagnostics: bool,
     pub hover: bool,
     pub runtime_tags: bool,
     pub tag_paths: Vec<PathBuf>,
@@ -135,7 +136,7 @@ fn handle_notification(
             if let Some((_text, doc)) = store.get(&uri) {
                 tag_index.update_file(&uri, doc);
             }
-            if config.diagnostics {
+            if config.diagnostics && config.publish_diagnostics {
                 push_diagnostics(connection, &uri, store, tag_index, config)?;
             }
         }
@@ -153,7 +154,7 @@ fn handle_notification(
             if let Some((_text, doc)) = store.get(&uri) {
                 tag_index.update_file(&uri, doc);
             }
-            if config.diagnostics {
+            if config.diagnostics && config.publish_diagnostics {
                 push_diagnostics(connection, &uri, store, tag_index, config)?;
             }
         }

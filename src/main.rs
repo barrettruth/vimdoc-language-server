@@ -392,12 +392,20 @@ fn main() -> Result<()> {
     let mut tag_paths = cli.tag_path.clone();
     tag_paths.extend(init_opts.tag_paths);
 
+    let client_supports_pull_diagnostics = init_params
+        .capabilities
+        .text_document
+        .as_ref()
+        .and_then(|td| td.diagnostic.as_ref())
+        .is_some();
+
     let config = Config {
         line_width: init_opts.line_width.unwrap_or(cli.line_width),
         formatting: init_opts.formatting.unwrap_or(!cli.no_formatting),
         reflow: init_opts.reflow.unwrap_or_else(|| cli.reflow.into()),
         normalize_spacing: init_opts.normalize_spacing.unwrap_or(cli.normalize_spacing),
         diagnostics: init_opts.diagnostics.unwrap_or(!cli.no_diagnostics),
+        publish_diagnostics: !client_supports_pull_diagnostics,
         hover: init_opts.hover.unwrap_or(!cli.no_hover),
         runtime_tags: init_opts.runtime_tags.unwrap_or(!cli.no_runtime_tags),
         tag_paths,
