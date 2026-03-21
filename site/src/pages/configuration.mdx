@@ -30,16 +30,17 @@ takes precedence.
 
 Passed via your editor's LSP configuration (e.g. `init_options` in Neovim).
 
-| Key                | Type       | Default    | Description                                    |
-| ------------------ | ---------- | ---------- | ---------------------------------------------- |
-| `lineWidth`        | `number`   | `78`       | Target line width                              |
-| `formatting`       | `boolean`  | `true`     | Enable formatting                              |
-| `reflow`           | `string`   | `"always"` | `"always"`, `"only-if-too-long"`, or `"never"` |
-| `normalizeSpacing` | `boolean`  | `false`    | Collapse multiple spaces                       |
-| `diagnostics`      | `boolean`  | `true`     | Enable diagnostics                             |
-| `hover`            | `boolean`  | `true`     | Enable hover                                   |
-| `tagPaths`         | `string[]` | `[]`       | Additional tag file paths                      |
-| `runtimeTags`      | `boolean`  | `true`     | Load `$VIMRUNTIME/doc/tags`                    |
+| Key                | Type       | Default    | Description                                                   |
+| ------------------ | ---------- | ---------- | ------------------------------------------------------------- |
+| `lineWidth`        | `number`   | `78`       | Target line width                                             |
+| `formatting`       | `boolean`  | `true`     | Enable formatting                                             |
+| `reflow`           | `string`   | `"always"` | `"always"`, `"only-if-too-long"`, or `"never"`                |
+| `normalizeSpacing` | `boolean`  | `false`    | Collapse multiple spaces                                      |
+| `diagnostics`      | `boolean`  | `true`     | Enable diagnostics                                            |
+| `hover`            | `boolean`  | `true`     | Enable hover                                                  |
+| `tagPaths`         | `string[]` | `[]`       | Additional tag file paths                                     |
+| `runtimeTags`      | `boolean`  | `true`     | Load `$VIMRUNTIME/doc/tags`                                   |
+| `diagnosticLevels` | `object`   | `{}`       | Per-code severity overrides (see [Diagnostics](/diagnostics)) |
 
 ## Precedence
 

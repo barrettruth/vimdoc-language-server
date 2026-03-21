@@ -31,6 +31,7 @@ pub struct ParsedLine {
 #[derive(Debug, Default, Clone)]
 pub struct Document {
     pub lines: Vec<ParsedLine>,
+    pub has_modeline: bool,
 }
 
 impl Document {
@@ -42,7 +43,15 @@ impl Document {
         for (idx, raw) in text.lines().enumerate() {
             lines.push(parse_line(idx as u32, raw, &mut in_code));
         }
-        Document { lines }
+        let has_modeline = text
+            .lines()
+            .rev()
+            .find(|l| !l.trim().is_empty())
+            .is_some_and(is_modeline);
+        Document {
+            lines,
+            has_modeline,
+        }
     }
 
     pub fn tag_defs(&self) -> impl Iterator<Item = &Span> {
@@ -113,6 +122,12 @@ fn mk(kind: LineKind, tag_defs: Vec<Span>, tag_refs: Vec<Span>) -> ParsedLine {
         tag_defs,
         tag_refs,
     }
+}
+
+fn is_modeline(line: &str) -> bool {
+    let s = line.trim();
+    (s.contains("vim:") || s.contains("vi:") || s.contains("ex:"))
+        && (s.contains("ft=help") || s.contains("filetype=help"))
 }
 
 fn is_fence_start(s: &str) -> bool {

@@ -6,10 +6,10 @@ toc: true
 
 # Diagnostics
 
-All diagnostics have severity **warning** and source `vimdoc`. Disable
-all diagnostics with `--no-diagnostics` or `diagnostics: false`.
+All diagnostics have source `vimdoc`. Disable all diagnostics with
+`--no-diagnostics` or `diagnostics: false`.
 
-## `duplicate-tag`
+## `duplicate-tag` (error)
 
 Fires when a `*tag*` is defined more than once.
 
@@ -25,7 +25,7 @@ INTRODUCTION                                          *plugin-intro*
 APPENDIX                                              *plugin-intro*
 ```
 
-Both lines receive the warning: `duplicate tag definition: *plugin-intro*`.
+Both lines receive the error: `duplicate tag definition: *plugin-intro*`.
 
 ### Cross-file duplicate
 
@@ -36,9 +36,9 @@ tag `*api-reference*` is also defined in another file
 ```
 
 This catches tag collisions between files in the same `doc/` directory. The
-warning appears on every definition of the tag, in every file.
+error appears on every definition of the tag, in every file.
 
-## `unresolved-tag`
+## `unresolved-tag` (warning)
 
 Fires when a `|taglink|` references a tag that cannot be found in the current
 file, workspace, or external tag files.
@@ -83,3 +83,44 @@ init_options = {
   tagPaths = { '/path/to/neovim/runtime/doc' },
 }
 ```
+
+## `missing-modeline` (hint)
+
+Fires when the last non-blank line of a file does not contain a Vim modeline
+with `ft=help` or `filetype=help`.
+
+```text
+missing modeline; add ' vim:tw=78:ts=8:ft=help:norl:' to the last line
+```
+
+The conventional modeline for vim help files is:
+
+```text
+ vim:tw=78:ts=8:ft=help:norl:
+```
+
+## Configuring severity
+
+Every diagnostic code's severity can be overridden — or suppressed entirely —
+via `diagnosticLevels` in `initializationOptions`:
+
+```lua
+init_options = {
+  diagnosticLevels = {
+    ['unresolved-tag'] = 'error',
+    ['missing-modeline'] = 'off',
+  },
+}
+```
+
+Valid levels are `"error"`, `"warning"`, `"information"`, `"hint"`, and
+`"off"`. Setting a code to `"off"` suppresses it completely.
+
+When using the `check` subcommand, pass `--ignore CODE` to suppress specific
+codes:
+
+```sh
+vimdoc-language-server check --ignore missing-modeline doc/
+```
+
+`--ignore` can be repeated for multiple codes.

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Result, anyhow};
@@ -17,7 +18,7 @@ use lsp_types::{
 };
 use serde::Deserialize;
 
-use crate::diagnostics;
+use crate::diagnostics::{self, DiagnosticLevel};
 use crate::formatter::ReflowMode;
 use crate::handlers;
 use crate::store::Store;
@@ -33,6 +34,7 @@ pub struct Config {
     pub hover: bool,
     pub runtime_tags: bool,
     pub tag_paths: Vec<PathBuf>,
+    pub diagnostic_levels: HashMap<String, DiagnosticLevel>,
 }
 
 #[derive(Deserialize, Default)]
@@ -47,6 +49,8 @@ pub struct InitOptions {
     pub hover: Option<bool>,
     pub reflow: Option<ReflowMode>,
     pub normalize_spacing: Option<bool>,
+    #[serde(default)]
+    pub diagnostic_levels: HashMap<String, DiagnosticLevel>,
 }
 
 #[allow(clippy::missing_errors_doc)]
@@ -97,10 +101,10 @@ fn handle_request(
         Rename::METHOD => handlers::handle_rename(req, store, tag_index),
         "textDocument/prepareRename" => handlers::handle_prepare_rename(req, store),
         DocumentDiagnosticRequest::METHOD if config.diagnostics => {
-            handlers::handle_document_diagnostic(req, store, tag_index)
+            handlers::handle_document_diagnostic(req, store, tag_index, config)
         }
         WorkspaceDiagnosticRequest::METHOD if config.diagnostics => {
-            handlers::handle_workspace_diagnostic(req, tag_index)
+            handlers::handle_workspace_diagnostic(req, tag_index, config)
         }
         _ => Response {
             id: req.id.clone(),
@@ -132,7 +136,7 @@ fn handle_notification(
                 tag_index.update_file(&uri, doc);
             }
             if config.diagnostics {
-                push_diagnostics(connection, &uri, store, tag_index)?;
+                push_diagnostics(connection, &uri, store, tag_index, config)?;
             }
         }
         DidChangeTextDocument::METHOD => {
@@ -150,7 +154,7 @@ fn handle_notification(
                 tag_index.update_file(&uri, doc);
             }
             if config.diagnostics {
-                push_diagnostics(connection, &uri, store, tag_index)?;
+                push_diagnostics(connection, &uri, store, tag_index, config)?;
             }
         }
         DidCloseTextDocument::METHOD => {
@@ -168,10 +172,11 @@ fn push_diagnostics(
     uri: &Uri,
     store: &Store,
     tag_index: &TagIndex,
+    config: &Config,
 ) -> Result<()> {
     let diags = store
         .get(uri)
-        .map(|(_t, doc)| diagnostics::compute(doc, tag_index, uri))
+        .map(|(_t, doc)| diagnostics::compute(doc, tag_index, uri, &config.diagnostic_levels))
         .unwrap_or_default();
 
     tracing::debug!(uri = %uri.as_str(), count = diags.len(), "publishing diagnostics");

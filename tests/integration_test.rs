@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use expect_test::expect;
 use lsp_server::Request;
 use lsp_types::{
@@ -746,6 +748,7 @@ mod formatting {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
+            diagnostic_levels: HashMap::new(),
         };
 
         let resp = handlers::handle_formatting(&req, &store, &config);
@@ -776,6 +779,7 @@ mod formatting {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
+            diagnostic_levels: HashMap::new(),
         };
 
         let resp = handlers::handle_formatting(&req, &store, &config);
@@ -816,6 +820,7 @@ mod formatting {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
+            diagnostic_levels: HashMap::new(),
         };
 
         let resp = handlers::handle_range_formatting(&req, &store, &config);
@@ -855,6 +860,7 @@ mod formatting {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
+            diagnostic_levels: HashMap::new(),
         };
 
         let resp = handlers::handle_range_formatting(&req, &store, &config);
@@ -877,6 +883,7 @@ mod code_action {
             hover: false,
             runtime_tags: false,
             tag_paths: vec![],
+            diagnostic_levels: HashMap::new(),
         }
     }
 
@@ -1204,11 +1211,28 @@ mod code_action {
 mod pull_diagnostics {
     use super::*;
 
+    fn make_diag_config() -> Config {
+        Config {
+            line_width: 78,
+            formatting: false,
+            reflow: ReflowMode::Always,
+            normalize_spacing: false,
+            diagnostics: true,
+            hover: false,
+            runtime_tags: false,
+            tag_paths: vec![],
+            diagnostic_levels: HashMap::new(),
+        }
+    }
+
     #[test]
     fn document_diagnostic_returns_full_report() {
         let mut store = Store::default();
         let uri: Uri = "file:///test.txt".parse().unwrap();
-        store.open(uri.clone(), "*foo* heading\n*foo* duplicate\n".into());
+        store.open(
+            uri.clone(),
+            "*foo* heading\n*foo* duplicate\n vim:tw=78:ts=8:ft=help:norl:\n".into(),
+        );
 
         let req = Request {
             id: 1.into(),
@@ -1219,7 +1243,8 @@ mod pull_diagnostics {
         };
 
         let tag_index = TagIndex::default();
-        let resp = handlers::handle_document_diagnostic(&req, &store, &tag_index);
+        let resp =
+            handlers::handle_document_diagnostic(&req, &store, &tag_index, &make_diag_config());
         let result: lsp_types::DocumentDiagnosticReportResult =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
@@ -1243,7 +1268,7 @@ mod pull_diagnostics {
     fn document_diagnostic_uses_workspace_docs_fallback() {
         let store = Store::default();
         let uri: Uri = "file:///ws.txt".parse().unwrap();
-        let doc = Document::parse("|missing| ref\n");
+        let doc = Document::parse("|missing| ref\n vim:tw=78:ts=8:ft=help:norl:\n");
         let mut tag_index = TagIndex::default();
         tag_index.update_file(&uri, &doc);
 
@@ -1255,7 +1280,8 @@ mod pull_diagnostics {
             }),
         };
 
-        let resp = handlers::handle_document_diagnostic(&req, &store, &tag_index);
+        let resp =
+            handlers::handle_document_diagnostic(&req, &store, &tag_index, &make_diag_config());
         let result: lsp_types::DocumentDiagnosticReportResult =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
@@ -1282,7 +1308,8 @@ mod pull_diagnostics {
             }),
         };
 
-        let resp = handlers::handle_document_diagnostic(&req, &store, &tag_index);
+        let resp =
+            handlers::handle_document_diagnostic(&req, &store, &tag_index, &make_diag_config());
         let result: lsp_types::DocumentDiagnosticReportResult =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
@@ -1313,7 +1340,7 @@ mod pull_diagnostics {
             }),
         };
 
-        let resp = handlers::handle_workspace_diagnostic(&req, &tag_index);
+        let resp = handlers::handle_workspace_diagnostic(&req, &tag_index, &make_diag_config());
         let result: lsp_types::WorkspaceDiagnosticReportResult =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
@@ -1348,7 +1375,7 @@ mod pull_diagnostics {
             }),
         };
 
-        let resp = handlers::handle_workspace_diagnostic(&req, &tag_index);
+        let resp = handlers::handle_workspace_diagnostic(&req, &tag_index, &make_diag_config());
         let result: lsp_types::WorkspaceDiagnosticReportResult =
             serde_json::from_value(resp.result.unwrap()).unwrap();
 
@@ -1365,9 +1392,9 @@ mod diagnostics_tests {
     #[test]
     fn duplicate_tag_warning() {
         let uri: Uri = "file:///test.txt".parse().unwrap();
-        let doc = Document::parse("*foo* first\n*foo* second\n");
+        let doc = Document::parse("*foo* first\n*foo* second\n vim:tw=78:ts=8:ft=help:norl:\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index, &uri);
+        let diags = diagnostics::compute(&doc, &tag_index, &uri, &HashMap::new());
 
         assert_eq!(diags.len(), 2);
         assert!(
@@ -1380,9 +1407,9 @@ mod diagnostics_tests {
     #[test]
     fn unresolved_ref_warning() {
         let uri: Uri = "file:///test.txt".parse().unwrap();
-        let doc = Document::parse("|missing| ref\n");
+        let doc = Document::parse("|missing| ref\n vim:tw=78:ts=8:ft=help:norl:\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index, &uri);
+        let diags = diagnostics::compute(&doc, &tag_index, &uri, &HashMap::new());
 
         assert_eq!(diags.len(), 1);
         assert_eq!(
@@ -1394,9 +1421,9 @@ mod diagnostics_tests {
     #[test]
     fn resolved_ref_clean() {
         let uri: Uri = "file:///test.txt".parse().unwrap();
-        let doc = Document::parse("*foo* def\nsee |foo| here\n");
+        let doc = Document::parse("*foo* def\nsee |foo| here\n vim:tw=78:ts=8:ft=help:norl:\n");
         let tag_index = TagIndex::default();
-        let diags = diagnostics::compute(&doc, &tag_index, &uri);
+        let diags = diagnostics::compute(&doc, &tag_index, &uri, &HashMap::new());
 
         assert!(diags.is_empty());
     }
@@ -1405,11 +1432,11 @@ mod diagnostics_tests {
     fn cross_file_duplicate_tag_warning() {
         let uri1: Uri = "file:///a.txt".parse().unwrap();
         let uri2: Uri = "file:///b.txt".parse().unwrap();
-        let doc1 = Document::parse("*foo* heading\n");
-        let doc2 = Document::parse("*foo* other\n");
+        let doc1 = Document::parse("*foo* heading\n vim:tw=78:ts=8:ft=help:norl:\n");
+        let doc2 = Document::parse("*foo* other\n vim:tw=78:ts=8:ft=help:norl:\n");
         let mut tag_index = TagIndex::default();
         tag_index.update_file(&uri2, &doc2);
-        let diags = diagnostics::compute(&doc1, &tag_index, &uri1);
+        let diags = diagnostics::compute(&doc1, &tag_index, &uri1, &HashMap::new());
 
         assert_eq!(diags.len(), 1);
         assert_eq!(

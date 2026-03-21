@@ -8,7 +8,7 @@ use lsp_types::{
 };
 
 use crate::diagnostics;
-use crate::server::make_response;
+use crate::server::{Config, make_response};
 use crate::store::Store;
 use crate::tags::TagIndex;
 
@@ -17,6 +17,7 @@ pub fn handle_document_diagnostic(
     req: &lsp_server::Request,
     store: &Store,
     tag_index: &TagIndex,
+    config: &Config,
 ) -> Response {
     let result = (|| -> Result<DocumentDiagnosticReportResult> {
         let params: lsp_types::DocumentDiagnosticParams =
@@ -27,7 +28,7 @@ pub fn handle_document_diagnostic(
             .get(uri)
             .map(|(_t, doc)| doc)
             .or_else(|| tag_index.workspace_doc(uri))
-            .map(|doc| diagnostics::compute(doc, tag_index, uri))
+            .map(|doc| diagnostics::compute(doc, tag_index, uri, &config.diagnostic_levels))
             .unwrap_or_default();
 
         Ok(DocumentDiagnosticReportResult::Report(
@@ -44,7 +45,11 @@ pub fn handle_document_diagnostic(
 }
 
 #[must_use]
-pub fn handle_workspace_diagnostic(req: &lsp_server::Request, tag_index: &TagIndex) -> Response {
+pub fn handle_workspace_diagnostic(
+    req: &lsp_server::Request,
+    tag_index: &TagIndex,
+    config: &Config,
+) -> Response {
     let result = (|| -> Result<WorkspaceDiagnosticReportResult> {
         let _params: lsp_types::WorkspaceDiagnosticParams =
             serde_json::from_value(req.params.clone())?;
@@ -52,7 +57,7 @@ pub fn handle_workspace_diagnostic(req: &lsp_server::Request, tag_index: &TagInd
         let items: Vec<WorkspaceDocumentDiagnosticReport> = tag_index
             .workspace_docs()
             .map(|(uri, doc)| {
-                let diags = diagnostics::compute(doc, tag_index, uri);
+                let diags = diagnostics::compute(doc, tag_index, uri, &config.diagnostic_levels);
                 WorkspaceDocumentDiagnosticReport::Full(WorkspaceFullDocumentDiagnosticReport {
                     uri: uri.clone(),
                     version: None,

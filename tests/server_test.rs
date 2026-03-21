@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use lsp_server::{Connection, Message, Notification, Request};
 use serde_json::json;
 use std::thread::{self, JoinHandle};
@@ -16,6 +18,7 @@ fn default_config() -> Config {
         hover: true,
         runtime_tags: false,
         tag_paths: vec![],
+        diagnostic_levels: HashMap::new(),
     }
 }
 
@@ -235,7 +238,7 @@ fn did_open_pushes_diagnostics() {
                     "uri": uri,
                     "languageId": "vimdoc",
                     "version": 1,
-                    "text": "*dup* a\n*dup* b\n"
+                    "text": "*dup* a\n*dup* b\n vim:tw=78:ts=8:ft=help:norl:\n"
                 }
             }),
         }))

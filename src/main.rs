@@ -1,16 +1,17 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use lsp_server::Connection;
 use lsp_types::{
-    CompletionOptions, DiagnosticOptions, DiagnosticServerCapabilities, InitializeParams, OneOf,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
+    CompletionOptions, DiagnosticOptions, DiagnosticServerCapabilities, DiagnosticSeverity,
+    InitializeParams, OneOf, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
 };
 use tracing_subscriber::EnvFilter;
 
 use vimdoc_language_server::{
-    diagnostics,
+    diagnostics::{self, DiagnosticLevel},
     formatter::ReflowMode,
     server::{self, Config, InitOptions},
     tags::{self, TagIndex},
@@ -101,6 +102,8 @@ enum Command {
 #[derive(Args)]
 struct CheckArgs {
     path: PathBuf,
+    #[arg(long, value_name = "CODE")]
+    ignore: Vec<String>,
 }
 
 fn server_capabilities(cli: &Cli) -> ServerCapabilities {
@@ -207,9 +210,9 @@ fn colorize(text: &str, codes: &str, use_color: bool) -> String {
     }
 }
 
-fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
+fn run_check(args: &CheckArgs, cli: &Cli) -> Result<()> {
     let mut tag_index = TagIndex::new();
-    tag_index.scan_directory(dir)?;
+    tag_index.scan_directory(&args.path)?;
 
     for tp in &cli.tag_path {
         server::load_tag_path(&mut tag_index, tp);
@@ -221,13 +224,19 @@ fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
         }
     }
 
+    let mut levels: HashMap<String, DiagnosticLevel> = HashMap::new();
+    for code in &args.ignore {
+        levels.insert(code.clone(), DiagnosticLevel::Off);
+    }
+
     let use_color = resolve_color(cli);
     let mut total = 0u32;
+    let mut blocking = 0u32;
     let mut files_with_diags = 0u32;
-    let dir_abs = std::fs::canonicalize(dir)?;
+    let dir_abs = std::fs::canonicalize(&args.path)?;
 
     for (uri, doc) in tag_index.workspace_docs() {
-        let diags = diagnostics::compute(doc, &tag_index, uri);
+        let diags = diagnostics::compute(doc, &tag_index, uri, &levels);
         if diags.is_empty() {
             continue;
         }
@@ -242,13 +251,25 @@ fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
                 lsp_types::NumberOrString::String(s) => s.clone(),
                 lsp_types::NumberOrString::Number(n) => n.to_string(),
             });
+            let code_color = match d.severity {
+                Some(DiagnosticSeverity::ERROR) => "1;31",
+                Some(DiagnosticSeverity::WARNING) => "1;33",
+                Some(DiagnosticSeverity::INFORMATION) => "1;34",
+                _ => "2",
+            };
             let loc = format!("{display_path}:{line}:{col}");
             println!(
                 "{}: {} {}",
                 colorize(&loc, "1", use_color),
-                colorize(&format!("[{code}]"), "1;33", use_color),
+                colorize(&format!("[{code}]"), code_color, use_color),
                 d.message,
             );
+            if matches!(
+                d.severity,
+                Some(DiagnosticSeverity::ERROR | DiagnosticSeverity::WARNING)
+            ) {
+                blocking += 1;
+            }
         }
         #[allow(clippy::cast_possible_truncation)]
         {
@@ -256,16 +277,16 @@ fn run_check(dir: &Path, cli: &Cli) -> Result<()> {
         }
     }
 
-    let summary = format!("{total} warnings in {files_with_diags} file(s)");
+    let summary = format!("{total} diagnostics in {files_with_diags} file(s)");
     println!(
         "{}",
         colorize(
             &summary,
-            if total == 0 { "1;32" } else { "1;33" },
+            if blocking == 0 { "1;32" } else { "1;33" },
             use_color
         )
     );
-    if total > 0 {
+    if blocking > 0 {
         std::process::exit(1);
     }
     Ok(())
@@ -320,6 +341,15 @@ fn print_config_schema() -> Result<()> {
                 "items": { "type": "string" },
                 "default": [],
                 "description": "Additional Vim tags file paths to load"
+            },
+            "diagnosticLevels": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "string",
+                    "enum": ["error", "warning", "information", "hint", "off"]
+                },
+                "default": {},
+                "description": "Per-diagnostic severity overrides. Keys are diagnostic codes, values are levels."
             }
         },
         "additionalProperties": false
@@ -336,7 +366,7 @@ fn main() -> Result<()> {
     }
 
     if let Some(Command::Check(ref args)) = cli.command {
-        return run_check(&args.path, &cli);
+        return run_check(args, &cli);
     }
 
     init_tracing(&cli)?;
@@ -371,6 +401,7 @@ fn main() -> Result<()> {
         hover: init_opts.hover.unwrap_or(!cli.no_hover),
         runtime_tags: init_opts.runtime_tags.unwrap_or(!cli.no_runtime_tags),
         tag_paths,
+        diagnostic_levels: init_opts.diagnostic_levels,
     };
 
     let workspace_root = init_params
