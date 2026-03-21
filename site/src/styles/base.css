@@ -340,6 +340,7 @@ nav .sep {
   transition: opacity 0.15s;
 }
 
-.toc-nav a:hover {
+.toc-nav a:hover,
+.toc-nav a.active {
   opacity: 1;
 }
