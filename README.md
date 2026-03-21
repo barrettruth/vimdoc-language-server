@@ -2,6 +2,8 @@
 
 Language server for vim help files.
 
+https://github.com/user-attachments/assets/ea22a061-ddd2-48f5-9370-49b1bfb3a1e1
+
 ## Installation
 
 ### Cargo
