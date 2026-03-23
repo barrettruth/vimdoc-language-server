@@ -29,23 +29,17 @@ cargo install --path .
 ## Usage
 
 Configure `vimdoc-language-server` in your editor of choice, for example with
-[Neovim](https://neovim.io):
+[Neovim](https://neovim.io) (nightly required):
 
 ```lua
 vim.lsp.config('vimdoc_ls', {
   cmd = { 'vimdoc-language-server' },
   filetypes = { 'help' },
-  -- buftypes = { 'help' },
   root_markers = { 'doc', '.git' },
   workspace_required = false,
 })
 
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'help',
-  callback = function()
-    vim.lsp.start(vim.lsp.config['vimdoc_ls'])
-  end,
-})
+vim.lsp.enable('vimdoc_ls')
 ```
 
 ## Features

@@ -37,23 +37,17 @@ cargo install --path .
 
 ### Neovim
 
-Using the built-in LSP client (Neovim 0.11+):
+Using the built-in LSP client (Neovim nightly required):
 
 ```lua
 vim.lsp.config('vimdoc_ls', {
   cmd = { 'vimdoc-language-server' },
   filetypes = { 'help' },
-  -- buftypes = { 'help' },
   root_markers = { 'doc', '.git' },
   workspace_required = false,
 })
 
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'help',
-  callback = function()
-    vim.lsp.start(vim.lsp.config['vimdoc_ls'])
-  end,
-})
+vim.lsp.enable('vimdoc_ls')
 ```
 
 Pass `initializationOptions` to configure the server:
@@ -62,7 +56,6 @@ Pass `initializationOptions` to configure the server:
 vim.lsp.config('vimdoc_ls', {
   cmd = { 'vimdoc-language-server' },
   filetypes = { 'help' },
-  -- buftypes = { 'help' },
   root_markers = { 'doc', '.git' },
   workspace_required = false,
   init_options = {
@@ -70,7 +63,6 @@ vim.lsp.config('vimdoc_ls', {
     reflow = 'always',
   },
 })
-```
 
-The `FileType` autocmd is temporarily needed because `vim.lsp.enable()` skips
-`buftype=help` buffers (tracked in [neovim#38380](https://github.com/neovim/neovim/issues/38380)).
+vim.lsp.enable('vimdoc_ls')
+```
