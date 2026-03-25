@@ -12,7 +12,7 @@ use tracing_subscriber::EnvFilter;
 
 use vimdoc_language_server::{
     diagnostics::{self, DiagnosticLevel},
-    formatter::ReflowMode,
+    formatter::{self, FormatOptions, ReflowMode},
     server::{self, Config, InitOptions},
     tags::{self, TagIndex},
 };
@@ -97,6 +97,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     Check(CheckArgs),
+    Format(FormatArgs),
 }
 
 #[derive(Args)]
@@ -104,6 +105,13 @@ struct CheckArgs {
     path: PathBuf,
     #[arg(long, value_name = "CODE")]
     ignore: Vec<String>,
+}
+
+#[derive(Args)]
+struct FormatArgs {
+    paths: Vec<PathBuf>,
+    #[arg(long)]
+    check: bool,
 }
 
 fn server_capabilities(cli: &Cli) -> ServerCapabilities {
@@ -292,6 +300,95 @@ fn run_check(args: &CheckArgs, cli: &Cli) -> Result<()> {
     Ok(())
 }
 
+fn collect_files(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    for path in paths {
+        if path.is_dir() {
+            let pattern = path.join("**/*.txt");
+            let pattern_str = pattern
+                .to_str()
+                .ok_or_else(|| anyhow::anyhow!("non-UTF-8 path"))?;
+            for entry in glob::glob(pattern_str)? {
+                files.push(entry?);
+            }
+        } else {
+            files.push(path.clone());
+        }
+    }
+    files.sort();
+    files.dedup();
+    Ok(files)
+}
+
+fn run_format(args: &FormatArgs, cli: &Cli) -> Result<()> {
+    let opts = FormatOptions {
+        line_width: cli.line_width,
+        reflow: cli.reflow.into(),
+        normalize_spacing: cli.normalize_spacing,
+    };
+
+    let files = collect_files(&args.paths)?;
+    if files.is_empty() {
+        anyhow::bail!("no files to format");
+    }
+
+    let use_color = resolve_color(cli);
+    let mut unformatted = 0u32;
+
+    for path in &files {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| anyhow::anyhow!("{}: {e}", path.display()))?;
+        let formatted = formatter::format_document(&text, &opts);
+
+        if text == formatted {
+            continue;
+        }
+
+        if args.check {
+            println!(
+                "{}",
+                colorize(
+                    &format!("Would reformat: {}", path.display()),
+                    "1;33",
+                    use_color,
+                )
+            );
+            unformatted += 1;
+        } else {
+            std::fs::write(path, &formatted)
+                .map_err(|e| anyhow::anyhow!("{}: {e}", path.display()))?;
+            println!(
+                "{}",
+                colorize(&format!("Formatted: {}", path.display()), "1;32", use_color)
+            );
+        }
+    }
+
+    if args.check {
+        #[allow(clippy::cast_possible_truncation)]
+        let total = files.len() as u32;
+        let already = total - unformatted;
+        let summary = if unformatted == 0 {
+            format!("{total} file(s) already formatted")
+        } else {
+            format!("{unformatted} file(s) would be reformatted, {already} already formatted")
+        };
+        println!(
+            "{}",
+            colorize(
+                &summary,
+                if unformatted == 0 { "1;32" } else { "1;33" },
+                use_color,
+            )
+        );
+        if unformatted > 0 {
+            std::process::exit(1);
+        }
+    }
+
+    Ok(())
+}
+
 fn print_config_schema() -> Result<()> {
     let schema = serde_json::json!({
         "$schema": "https://json-schema.org/draft-07/schema",
@@ -365,8 +462,10 @@ fn main() -> Result<()> {
         return print_config_schema();
     }
 
-    if let Some(Command::Check(ref args)) = cli.command {
-        return run_check(args, &cli);
+    match cli.command {
+        Some(Command::Check(ref args)) => return run_check(args, &cli),
+        Some(Command::Format(ref args)) => return run_format(args, &cli),
+        None => {}
     }
 
     init_tracing(&cli)?;
