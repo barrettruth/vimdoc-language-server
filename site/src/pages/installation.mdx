@@ -37,7 +37,7 @@ cargo install --path .
 
 ### Neovim
 
-Using the built-in LSP client (Neovim nightly required):
+Using the built-in LSP client directly (Neovim nightly required):
 
 ```lua
 vim.lsp.config('vimdoc_ls', {
@@ -50,14 +50,12 @@ vim.lsp.config('vimdoc_ls', {
 vim.lsp.enable('vimdoc_ls')
 ```
 
+[nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) support comes [out of the box](https://github.com/neovim/nvim-lspconfig/pull/4347).
+
 Pass `initializationOptions` to configure the server:
 
 ```lua
 vim.lsp.config('vimdoc_ls', {
-  cmd = { 'vimdoc-language-server' },
-  filetypes = { 'help' },
-  root_markers = { 'doc', '.git' },
-  workspace_required = false,
   init_options = {
     lineWidth = 78,
     reflow = 'always',
