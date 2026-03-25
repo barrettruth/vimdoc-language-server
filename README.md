@@ -29,7 +29,8 @@ cargo install --path .
 ## Usage
 
 Configure `vimdoc-language-server` in your editor of choice, for example with
-[Neovim](https://neovim.io) via [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig):
+[Neovim](https://neovim.io) via
+[nvim-lspconfig](https://github.com/neovim/nvim-lspconfig):
 
 ```lua
 vim.lsp.enable('vimdoc_ls')
