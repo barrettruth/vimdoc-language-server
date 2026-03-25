@@ -36,6 +36,25 @@ Configure `vimdoc-language-server` in your editor of choice, for example with
 vim.lsp.enable('vimdoc_ls')
 ```
 
+### CLI
+
+The server also provides standalone CLI subcommands that work without an editor.
+
+**Format** vimdoc files (in-place or check-only for CI):
+
+```sh
+vimdoc-language-server format doc/
+vimdoc-language-server format --check doc/*.txt
+vimdoc-language-server --line-width 80 format doc/
+```
+
+**Check** for diagnostics (duplicate tags, unresolved taglinks):
+
+```sh
+vimdoc-language-server check doc/
+vimdoc-language-server check --ignore unresolved-tag doc/
+```
+
 ## Features
 
 - [x] **Formatting** — separator normalization, prose reflow, heading alignment;
