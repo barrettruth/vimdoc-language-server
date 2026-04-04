@@ -105,6 +105,9 @@ regardless of the `normalizeSpacing` setting.
 - **Indented lines** — any line starting with spaces or tabs is left as-is
 - **Tab-containing lines** — command references like `CTRL-V\t\tDescription` are
   preserved and not merged with adjacent prose
+- **Pipe tables** — lines that start and end with `|` are preserved verbatim,
+  covering both padded (`| cell | cell |`) and tight (`|cell|cell|`) GFM-style
+  tables
 - **Blank lines** — structure-preserving
 
 ## Limitations

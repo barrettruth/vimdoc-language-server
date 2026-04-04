@@ -122,6 +122,28 @@ Content between backticks is skipped during tag scanning.
 
 A `|pipe|` pattern inside a backtick span is not recognized as a taglink.
 
+## Pipe Tables
+
+Lines that start and end with `|` (after trimming trailing whitespace) are
+recognized as pipe table rows and preserved verbatim by the formatter. This
+covers both padded and tight GFM-style markdown tables.
+
+```
+| Command  | List           |
+| -------- | -------------- |
+| `files`  | find or fd     |
+```
+
+```
+|Prefix     |Behavior       |
+|-----------|---------------|
+|`no prefix`|Files          |
+```
+
+Pipe table rows are not reflowed, not merged with adjacent prose, and not
+treated as taglinks. Traditional vimdoc tables that use tab-aligned columns
+with `~` headers are already preserved by the tab-containing-line rule.
+
 ## Blank Lines
 
 An empty line or a line containing only whitespace is classified as `Blank`.
