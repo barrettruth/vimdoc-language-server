@@ -66,7 +66,7 @@ pub fn format_document(text: &str, opts: &FormatOptions) -> String {
                 if pl.tag_defs.is_empty() {
                     let indent = leading_whitespace(raw_lines[i]);
                     if indent.is_empty() {
-                        if raw_lines[i].contains('\t') {
+                        if raw_lines[i].contains('\t') || is_pipe_table_row(raw_lines[i]) {
                             out.push(raw_lines[i].trim_end().to_string());
                             i += 1;
                         } else {
@@ -115,6 +115,7 @@ fn emit_prose_paragraph(
         && doc.lines[j].tag_defs.is_empty()
         && leading_whitespace(raw_lines[j]).is_empty()
         && !raw_lines[j].contains('\t')
+        && !is_pipe_table_row(raw_lines[j])
     {
         j += 1;
     }
@@ -187,6 +188,11 @@ fn format_heading(raw: &str, pl: &crate::parser::ParsedLine, line_width: usize) 
 fn leading_whitespace(s: &str) -> &str {
     let trimmed = s.trim_start_matches([' ', '\t']);
     &s[..s.len() - trimmed.len()]
+}
+
+fn is_pipe_table_row(s: &str) -> bool {
+    let trimmed = s.trim_end();
+    trimmed.starts_with('|') && trimmed.len() > 1 && trimmed.ends_with('|')
 }
 
 fn split_words_with_spacing(s: &str) -> Vec<(&str, usize)> {
@@ -438,6 +444,70 @@ mod tests {
         let result = format_document(&input, &opts);
         assert_ne!(result, input);
         assert!(result.lines().all(|l| l.len() <= 78));
+    }
+
+    #[test]
+    fn pipe_table_padded_preserved() {
+        let input = "\
+| Command  | List           |
+| -------- | -------------- |
+| `files`  | find or fd     |
+| `buffers` | open buffers  |
+";
+        let result = format_document(input, &FormatOptions::default());
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn pipe_table_tight_preserved() {
+        let input = "\
+|Prefix     |Behavior                           |
+|-----------|-----------------------------------|
+|`no prefix`|Files                              |
+|`$`        |Buffers                            |
+";
+        let result = format_document(input, &FormatOptions::default());
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn pipe_table_not_merged_with_adjacent_prose() {
+        let input = "\
+Prose before the table.
+
+| Command  | List       |
+| -------- | ---------- |
+| `files`  | find or fd |
+
+Prose after the table.
+";
+        let result = format_document(input, &FormatOptions::default());
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn pipe_table_idempotent() {
+        let input = "\
+| Key       | Command           | Key       | Command           |
+| ----------| ------------------| ----------| ------------------|
+| `<C-\\>`    | buffers           | `<C-p>`     | files             |
+";
+        let once = format_document(input, &FormatOptions::default());
+        let twice = format_document(&once, &FormatOptions::default());
+        assert_eq!(once, twice);
+    }
+
+    #[test]
+    fn pipe_table_prose_after_not_blocked() {
+        let input = "\
+| Col | Val |
+
+word1 word2
+word3 word4
+";
+        let result = format_document(input, &FormatOptions::default());
+        assert!(result.contains("| Col | Val |"));
+        assert!(result.contains("word1 word2 word3 word4"));
     }
 
     #[test]
