@@ -48,7 +48,7 @@ jobs:
 
   release:
     needs: dist
-    runs-on: [self-hosted, linux, x64, netcup, general]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -60,7 +60,7 @@ jobs:
 
   publish:
     needs: release
-    runs-on: [self-hosted, linux, x64, netcup, general]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
