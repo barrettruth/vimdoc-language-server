@@ -14,6 +14,21 @@
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+        ciToolchain = toolchain.override {
+          targets = [
+            "x86_64-unknown-linux-gnu"
+            "aarch64-apple-darwin"
+            "x86_64-apple-darwin"
+          ];
+        };
+        commonBuildInputs = [
+          pkgs.cargo-edit
+          pkgs.cargo-watch
+          pkgs.nodejs_22
+          pkgs.pnpm
+          pkgs.prettier
+          pkgs.just
+        ];
       in
       {
         packages.default = pkgs.rustPlatform.buildRustPackage {
@@ -24,14 +39,11 @@
         };
 
         devShells.default = pkgs.mkShell {
-          buildInputs = [
-            toolchain
-            pkgs.cargo-edit
-            pkgs.cargo-watch
-            pkgs.nodejs_22
-            pkgs.pnpm
-            pkgs.prettier
-          ];
+          buildInputs = [ toolchain ] ++ commonBuildInputs;
+        };
+
+        devShells.ci = pkgs.mkShell {
+          buildInputs = [ ciToolchain ] ++ commonBuildInputs;
         };
       }
     );
