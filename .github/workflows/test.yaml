@@ -15,6 +15,5 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test --all
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop .#ci --command just test
