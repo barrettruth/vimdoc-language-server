@@ -8,7 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "format:check": "prettier --check 'src/**/*.{astro,mdx,css}' astro.config.mjs"
+    "format:check": "biome format astro.config.mjs biome.json package.json tsconfig.json src"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.14",
@@ -17,8 +17,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.8",
-    "prettier": "^3.8.1",
-    "prettier-plugin-astro": "^0.14.1",
+    "@biomejs/biome": "^2.4.13",
     "typescript": "^5.9.3"
   }
 }
