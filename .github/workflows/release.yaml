@@ -9,18 +9,18 @@ permissions:
   contents: write
 
 jobs:
-  format:
-    uses: ./.github/workflows/format.yaml
-
   lint:
     uses: ./.github/workflows/lint.yaml
+
+  format:
+    uses: ./.github/workflows/format.yaml
 
   test:
     uses: ./.github/workflows/test.yaml
 
   dist:
     name: Build (${{ matrix.target }})
-    needs: [format, lint, test]
+    needs: [lint, format, test]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

@@ -37,5 +37,5 @@ flake-check:
 build-target target:
     cargo build --release --target {{target}}
 
-ci: format lint test
+ci: lint format test
     @:
