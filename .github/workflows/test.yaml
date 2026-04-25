@@ -1,14 +1,13 @@
-name: Test
+name: test
 
 on:
   workflow_call:
   pull_request:
-  push:
     branches: [main]
 
 jobs:
   test:
-    name: Test (${{ matrix.os }})
+    name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
