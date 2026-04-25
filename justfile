@@ -1,7 +1,7 @@
 default:
     @just --list
 
-format: rust-format markdown-format site-format
+format: rust-format site-format
     @:
 
 lint: rust-lint site-check flake-check
@@ -18,9 +18,6 @@ rust-format:
 
 rust-lint:
     cargo clippy --all-targets -- -D warnings
-
-markdown-format:
-    prettier --check .
 
 site-install:
     cd site && pnpm install --frozen-lockfile

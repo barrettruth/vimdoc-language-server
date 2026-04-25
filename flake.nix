@@ -26,7 +26,7 @@
           pkgs.cargo-watch
           pkgs.nodejs_22
           pkgs.pnpm
-          pkgs.prettier
+          pkgs.biome
           pkgs.just
         ];
       in
