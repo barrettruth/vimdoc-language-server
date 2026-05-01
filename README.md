@@ -1,5 +1,8 @@
 # vimdoc-language-server
 
+> [!NOTE]
+> Issues and PRs at <https://git.barrettruth.com/barrettruth/vimdoc-language-server>.
+
 Language server for vim help files.
 
 https://github.com/user-attachments/assets/99ba05f6-9dbf-4645-8491-cf10af208743
