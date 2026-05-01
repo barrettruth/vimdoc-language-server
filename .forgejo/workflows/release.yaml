@@ -31,13 +31,19 @@ jobs:
 
       - name: Build Linux release asset
         run: |
-          nix develop .#ci --command just build-target x86_64-unknown-linux-gnu
+          nix develop .#ci --command just build
           mkdir -p dist/package/bin dist/package/share/man/man1
-          cp target/x86_64-unknown-linux-gnu/release/vimdoc-language-server \
-            dist/vimdoc-language-server-linux-x86_64
-          cp dist/vimdoc-language-server-linux-x86_64 dist/package/bin/vimdoc-language-server
+          case "$(uname -m)" in
+            x86_64|amd64) asset_arch=x86_64 ;;
+            aarch64|arm64) asset_arch=aarch64 ;;
+            *) asset_arch="$(uname -m)" ;;
+          esac
+          asset_name="vimdoc-language-server-linux-${asset_arch}"
+          cp target/release/vimdoc-language-server "dist/${asset_name}"
+          cp "dist/${asset_name}" dist/package/bin/vimdoc-language-server
           cp man/*.1 dist/package/share/man/man1/
-          tar -C dist/package -czf dist/vimdoc-language-server-linux-x86_64.tar.gz .
+          tar -C dist/package -czf "dist/${asset_name}.tar.gz" .
+          printf '%s\n' "${asset_name}" > dist/asset-name
 
       - name: Publish crate dry run
         run: nix develop .#ci --command cargo publish --dry-run --locked
@@ -54,14 +60,15 @@ jobs:
 
       - name: Create Forgejo release
         run: |
+          asset_name="$(cat dist/asset-name)"
           nix develop .#ci --command tea releases create \
             --login actions \
             --repo "${{ github.repository }}" \
             --tag "$GITHUB_REF_NAME" \
             --target "$GITHUB_SHA" \
             --title "$GITHUB_REF_NAME" \
-            --asset dist/vimdoc-language-server-linux-x86_64 \
-            --asset dist/vimdoc-language-server-linux-x86_64.tar.gz
+            --asset "dist/${asset_name}" \
+            --asset "dist/${asset_name}.tar.gz"
 
       - name: Publish crate
         run: nix develop .#ci --command cargo publish --locked
