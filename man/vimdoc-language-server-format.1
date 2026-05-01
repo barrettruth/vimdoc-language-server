@@ -1,0 +1,48 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH vimdoc-language-server-format 1  "format 0.1.2"
+.SH NAME
+vimdoc\-language\-server\-format \- Format vimdoc files
+.SH SYNOPSIS
+\fBvimdoc\-language\-server format\fR [\fB\-\-check\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-line\-width\fR] [\fB\-\-tag\-path\fR] [\fB\-\-runtime\-tags\fR] [\fB\-\-no\-runtime\-tags\fR] [\fB\-\-color\fR] [\fB\-\-no\-color\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIPATH\fR>
+.SH DESCRIPTION
+Format vimdoc files
+.SH OPTIONS
+.TP
+\fB\-\-check\fR
+Report files that would change without writing them
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Increase logging verbosity; repeat for more detail
+.TP
+\fB\-\-log\-file\fR \fI<PATH>\fR
+Write logs to PATH instead of stderr
+.TP
+\fB\-\-line\-width\fR \fI<N>\fR [default: 78]
+Target line width for vimdoc formatting
+.TP
+\fB\-\-tag\-path\fR \fI<PATH>\fR
+Load additional Vim tags from PATH
+.TP
+\fB\-\-runtime\-tags\fR
+Load tags from the discovered Vim runtime
+.TP
+\fB\-\-no\-runtime\-tags\fR
+Do not load tags from the discovered Vim runtime
+.TP
+\fB\-\-color\fR
+Always use colored CLI output
+.TP
+\fB\-\-no\-color\fR
+Never use colored CLI output
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.TP
+<\fIPATH\fR>
+Vimdoc file or directory to format
+.SH VERSION
+v0.1.2

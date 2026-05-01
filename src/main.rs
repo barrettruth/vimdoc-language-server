@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
+use clap::Parser;
 use lsp_server::Connection;
 use lsp_types::{
     CompletionOptions, DiagnosticOptions, DiagnosticServerCapabilities, DiagnosticSeverity,
@@ -11,108 +11,12 @@ use lsp_types::{
 use tracing_subscriber::EnvFilter;
 
 use vimdoc_language_server::{
+    cli::{CheckArgs, Cli, CliCommand, FormatArgs},
     diagnostics::{self, DiagnosticLevel},
-    formatter::{self, FormatOptions, ReflowMode},
+    formatter::{self, FormatOptions},
     server::{self, Config, InitOptions},
     tags::{self, TagIndex},
 };
-
-#[derive(Clone, Copy, ValueEnum)]
-enum CliReflowMode {
-    Always,
-    #[value(name = "only-if-too-long")]
-    OnlyIfTooLong,
-    Never,
-}
-
-impl From<CliReflowMode> for ReflowMode {
-    fn from(m: CliReflowMode) -> Self {
-        match m {
-            CliReflowMode::Always => ReflowMode::Always,
-            CliReflowMode::OnlyIfTooLong => ReflowMode::OnlyIfTooLong,
-            CliReflowMode::Never => ReflowMode::Never,
-        }
-    }
-}
-
-#[derive(Parser)]
-#[command(version, about = "Language server for vim help files")]
-#[allow(clippy::struct_excessive_bools)]
-struct Cli {
-    #[arg(long, short = 'v', action = ArgAction::Count, global = true)]
-    verbose: u8,
-
-    #[arg(long, value_name = "PATH", global = true)]
-    log_file: Option<PathBuf>,
-
-    #[arg(long, default_value_t = 78, value_name = "N", global = true)]
-    line_width: usize,
-
-    #[arg(long, value_name = "PATH", global = true)]
-    tag_path: Vec<PathBuf>,
-
-    #[command(subcommand)]
-    command: Option<Command>,
-
-    #[arg(long, overrides_with = "no_runtime_tags", global = true)]
-    runtime_tags: bool,
-
-    #[arg(long, overrides_with = "runtime_tags", global = true)]
-    no_runtime_tags: bool,
-
-    #[arg(long, overrides_with = "no_formatting")]
-    formatting: bool,
-
-    #[arg(long, overrides_with = "formatting")]
-    no_formatting: bool,
-
-    #[arg(long, value_enum, default_value = "always")]
-    reflow: CliReflowMode,
-
-    #[arg(long)]
-    normalize_spacing: bool,
-
-    #[arg(long, overrides_with = "no_diagnostics")]
-    diagnostics: bool,
-
-    #[arg(long, overrides_with = "diagnostics")]
-    no_diagnostics: bool,
-
-    #[arg(long, overrides_with = "no_hover")]
-    hover: bool,
-
-    #[arg(long, overrides_with = "hover")]
-    no_hover: bool,
-
-    #[arg(long, overrides_with = "no_color", global = true)]
-    color: bool,
-
-    #[arg(long, overrides_with = "color", global = true)]
-    no_color: bool,
-
-    #[arg(long)]
-    print_config_schema: bool,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    Check(CheckArgs),
-    Format(FormatArgs),
-}
-
-#[derive(Args)]
-struct CheckArgs {
-    path: PathBuf,
-    #[arg(long, value_name = "CODE")]
-    ignore: Vec<String>,
-}
-
-#[derive(Args)]
-struct FormatArgs {
-    paths: Vec<PathBuf>,
-    #[arg(long)]
-    check: bool,
-}
 
 fn server_capabilities(cli: &Cli) -> ServerCapabilities {
     ServerCapabilities {
@@ -462,9 +366,9 @@ fn main() -> Result<()> {
         return print_config_schema();
     }
 
-    match cli.command {
-        Some(Command::Check(ref args)) => return run_check(args, &cli),
-        Some(Command::Format(ref args)) => return run_format(args, &cli),
+    match &cli.command {
+        Some(CliCommand::Check(args)) => return run_check(args, &cli),
+        Some(CliCommand::Format(args)) => return run_format(args, &cli),
         None => {}
     }
 
