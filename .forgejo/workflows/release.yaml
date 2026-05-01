@@ -50,6 +50,7 @@ jobs:
 
       - name: Configure Forgejo CLI
         run: |
+          nix develop .#ci --command tea login delete actions || true
           nix develop .#ci --command tea login add \
             --name actions \
             --url "${{ github.server_url }}" \
