@@ -21,13 +21,19 @@ jobs:
 
       - name: Build Linux nightly asset
         run: |
-          nix develop .#ci --command just build-target x86_64-unknown-linux-gnu
+          nix develop .#ci --command just build
           mkdir -p dist/package/bin dist/package/share/man/man1
-          cp target/x86_64-unknown-linux-gnu/release/vimdoc-language-server \
-            dist/vimdoc-language-server-linux-x86_64
-          cp dist/vimdoc-language-server-linux-x86_64 dist/package/bin/vimdoc-language-server
+          case "$(uname -m)" in
+            x86_64|amd64) asset_arch=x86_64 ;;
+            aarch64|arm64) asset_arch=aarch64 ;;
+            *) asset_arch="$(uname -m)" ;;
+          esac
+          asset_name="vimdoc-language-server-linux-${asset_arch}"
+          cp target/release/vimdoc-language-server "dist/${asset_name}"
+          cp "dist/${asset_name}" dist/package/bin/vimdoc-language-server
           cp man/*.1 dist/package/share/man/man1/
-          tar -C dist/package -czf dist/vimdoc-language-server-linux-x86_64.tar.gz .
+          tar -C dist/package -czf "dist/${asset_name}.tar.gz" .
+          printf '%s\n' "${asset_name}" > dist/asset-name
 
       - name: Move nightly tag
         run: |
@@ -48,6 +54,7 @@ jobs:
 
       - name: Replace nightly release
         run: |
+          asset_name="$(cat dist/asset-name)"
           nix develop .#ci --command tea releases delete \
             --login actions \
             --repo "${{ github.repository }}" \
@@ -59,5 +66,5 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "Nightly ($GITHUB_SHA)" \
             --prerelease \
-            --asset dist/vimdoc-language-server-linux-x86_64 \
-            --asset dist/vimdoc-language-server-linux-x86_64.tar.gz
+            --asset "dist/${asset_name}" \
+            --asset "dist/${asset_name}.tar.gz"
