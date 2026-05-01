@@ -17,7 +17,7 @@ jobs:
           script: |
             const forgejoUrl = `https://git.barrettruth.com/${context.repo.owner}/${context.repo.repo}`;
             const body = [
-              'Thanks!',
+              'Thank you for the contribution.',
               '',
               `This GitHub repo is a read-only mirror. Please reopen this PR on [Forgejo](${forgejoUrl}).`,
             ].join('\n');
