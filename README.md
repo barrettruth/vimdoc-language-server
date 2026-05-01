@@ -72,6 +72,21 @@ vimdoc-language-server check --ignore unresolved-tag doc/
 - [x] **Folding** — sections (between separators) and code blocks
 - [x] **Code actions** — quick fixes and refactors
 
+## Release
+
+Numbered releases are explicit maintainer actions from a clean, up-to-date
+`main` branch:
+
+```sh
+just release 0.2.2
+```
+
+The command bumps Cargo and Nix package metadata, regenerates manpages, runs CI,
+checks `cargo publish --dry-run`, commits the release, tags it, and pushes
+`main` plus the tag. Forgejo publishes crates.io and replaces the release assets
+from the tag workflow. Use `just release 0.2.3 --dry-run` to run the release
+checks without keeping a commit, tag, or push.
+
 ## Acknowledgements
 
 - [@skewb1k](https://github.com/skewb1k) - pull diagnostics deduplication fix
