@@ -1,0 +1,69 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: nix
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag matches Cargo.toml
+        run: |
+          cargo_version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$cargo_version" != "$tag_version" ]; then
+            echo "Tag $tag_version does not match Cargo.toml version $cargo_version" >&2
+            exit 1
+          fi
+
+      - name: Check
+        run: nix develop .#ci --command just ci
+
+      - name: Build Linux release asset
+        run: |
+          nix develop .#ci --command just build-target x86_64-unknown-linux-gnu
+          mkdir -p dist/package/bin dist/package/share/man/man1
+          cp target/x86_64-unknown-linux-gnu/release/vimdoc-language-server \
+            dist/vimdoc-language-server-linux-x86_64
+          cp dist/vimdoc-language-server-linux-x86_64 dist/package/bin/vimdoc-language-server
+          cp man/*.1 dist/package/share/man/man1/
+          tar -C dist/package -czf dist/vimdoc-language-server-linux-x86_64.tar.gz .
+
+      - name: Publish crate dry run
+        run: nix develop .#ci --command cargo publish --dry-run --locked
+
+      - name: Configure Forgejo CLI
+        run: |
+          nix develop .#ci --command tea login add \
+            --name actions \
+            --url "${{ github.server_url }}" \
+            --token "$GITHUB_TOKEN" \
+            --no-version-check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Forgejo release
+        run: |
+          nix develop .#ci --command tea releases create \
+            --login actions \
+            --repo "${{ github.repository }}" \
+            --tag "$GITHUB_REF_NAME" \
+            --target "$GITHUB_SHA" \
+            --title "$GITHUB_REF_NAME" \
+            --asset dist/vimdoc-language-server-linux-x86_64 \
+            --asset dist/vimdoc-language-server-linux-x86_64.tar.gz
+
+      - name: Publish crate
+        run: nix develop .#ci --command cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

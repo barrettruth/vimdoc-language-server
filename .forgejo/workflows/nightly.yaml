@@ -1,0 +1,63 @@
+name: nightly
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    name: Nightly
+    runs-on: nix
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check
+        run: nix develop .#ci --command just ci
+
+      - name: Build Linux nightly asset
+        run: |
+          nix develop .#ci --command just build-target x86_64-unknown-linux-gnu
+          mkdir -p dist/package/bin dist/package/share/man/man1
+          cp target/x86_64-unknown-linux-gnu/release/vimdoc-language-server \
+            dist/vimdoc-language-server-linux-x86_64
+          cp dist/vimdoc-language-server-linux-x86_64 dist/package/bin/vimdoc-language-server
+          cp man/*.1 dist/package/share/man/man1/
+          tar -C dist/package -czf dist/vimdoc-language-server-linux-x86_64.tar.gz .
+
+      - name: Move nightly tag
+        run: |
+          git config user.name "forgejo-actions"
+          git config user.email "forgejo-actions@users.noreply.git.barrettruth.com"
+          git tag -f nightly "$GITHUB_SHA"
+          git push origin refs/tags/nightly --force
+
+      - name: Configure Forgejo CLI
+        run: |
+          nix develop .#ci --command tea login add \
+            --name actions \
+            --url "${{ github.server_url }}" \
+            --token "$GITHUB_TOKEN" \
+            --no-version-check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Replace nightly release
+        run: |
+          nix develop .#ci --command tea releases delete \
+            --login actions \
+            --repo "${{ github.repository }}" \
+            --confirm nightly || true
+          nix develop .#ci --command tea releases create \
+            --login actions \
+            --repo "${{ github.repository }}" \
+            --tag nightly \
+            --target "$GITHUB_SHA" \
+            --title "Nightly ($GITHUB_SHA)" \
+            --prerelease \
+            --asset dist/vimdoc-language-server-linux-x86_64 \
+            --asset dist/vimdoc-language-server-linux-x86_64.tar.gz

@@ -28,6 +28,7 @@
           pkgs.openssh
           pkgs.pnpm
           pkgs.biome
+          pkgs.tea
           pkgs.just
           pkgs.rsync
         ];
