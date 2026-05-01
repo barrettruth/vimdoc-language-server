@@ -1,0 +1,44 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: nix
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build site
+        run: nix develop .#ci --command just site-build
+      - name: Deploy
+        env:
+          BUILD_DIR: site/dist
+          DEPLOY_HOST: git.barrettruth.com
+          DEPLOY_ROOT: /srv/www/vimdoc-language-server.com
+          DEPLOY_USER: web-deploy
+          VPS_WEB_DEPLOY_KEY: ${{ secrets.VPS_WEB_DEPLOY_KEY }}
+        run: |
+          set -eu
+          if [ -z "${VPS_WEB_DEPLOY_KEY:-}" ]; then
+            echo "VPS_WEB_DEPLOY_KEY is not set" >&2
+            exit 1
+          fi
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$VPS_WEB_DEPLOY_KEY" > "$HOME/.ssh/vps_web_deploy"
+          chmod 600 "$HOME/.ssh/vps_web_deploy"
+          nix develop .#ci --command bash -lc '
+            set -eu
+            ssh-keyscan -H "$DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
+            release="$DEPLOY_ROOT/releases/$GITHUB_SHA"
+            ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$release\""
+            rsync -az --delete -e "ssh -i $HOME/.ssh/vps_web_deploy" "$BUILD_DIR"/ "$DEPLOY_USER@$DEPLOY_HOST:$release/"
+            ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "ln -sfn \"$release\" \"$DEPLOY_ROOT/current.next\" && mv -Tf \"$DEPLOY_ROOT/current.next\" \"$DEPLOY_ROOT/current\""
+            ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "cd \"$DEPLOY_ROOT/releases\" && ls -1dt -- */ 2>/dev/null | tail -n +11 | xargs -r rm -rf --"
+          '

@@ -25,9 +25,11 @@
           pkgs.cargo-edit
           pkgs.cargo-watch
           pkgs.nodejs_22
+          pkgs.openssh
           pkgs.pnpm
           pkgs.biome
           pkgs.just
+          pkgs.rsync
         ];
       in
       {
