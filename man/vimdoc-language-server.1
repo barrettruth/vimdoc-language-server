@@ -1,0 +1,88 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH vimdoc-language-server 1  "vimdoc-language-server 0.1.2"
+.SH NAME
+vimdoc\-language\-server \- Language server for Vim help files
+.SH SYNOPSIS
+\fBvimdoc\-language\-server\fR [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-\-log\-file\fR] [\fB\-\-line\-width\fR] [\fB\-\-tag\-path\fR] [\fB\-\-runtime\-tags\fR] [\fB\-\-no\-runtime\-tags\fR] [\fB\-\-formatting\fR] [\fB\-\-no\-formatting\fR] [\fB\-\-reflow\fR] [\fB\-\-normalize\-spacing\fR] [\fB\-\-diagnostics\fR] [\fB\-\-no\-diagnostics\fR] [\fB\-\-hover\fR] [\fB\-\-no\-hover\fR] [\fB\-\-color\fR] [\fB\-\-no\-color\fR] [\fB\-\-print\-config\-schema\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIsubcommands\fR]
+.SH DESCRIPTION
+vimdoc\-language\-server provides Language Server Protocol support and standalone CLI tools for Vim help files. It can format vimdoc text, report duplicate tags and unresolved tag links, and run as an editor language server over stdio.
+.SH OPTIONS
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Increase logging verbosity; repeat for more detail
+.TP
+\fB\-\-log\-file\fR \fI<PATH>\fR
+Write logs to PATH instead of stderr
+.TP
+\fB\-\-line\-width\fR \fI<N>\fR [default: 78]
+Target line width for vimdoc formatting
+.TP
+\fB\-\-tag\-path\fR \fI<PATH>\fR
+Load additional Vim tags from PATH
+.TP
+\fB\-\-runtime\-tags\fR
+Load tags from the discovered Vim runtime
+.TP
+\fB\-\-no\-runtime\-tags\fR
+Do not load tags from the discovered Vim runtime
+.TP
+\fB\-\-formatting\fR
+Enable editor formatting support
+.TP
+\fB\-\-no\-formatting\fR
+Disable editor formatting support
+.TP
+\fB\-\-reflow\fR \fI<REFLOW>\fR [default: always]
+Choose when prose paragraphs are reflowed
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+always
+.IP \(bu 2
+only\-if\-too\-long
+.IP \(bu 2
+never
+.RE
+.TP
+\fB\-\-normalize\-spacing\fR
+Normalize spacing between sentences while formatting
+.TP
+\fB\-\-diagnostics\fR
+Enable editor diagnostics
+.TP
+\fB\-\-no\-diagnostics\fR
+Disable editor diagnostics
+.TP
+\fB\-\-hover\fR
+Enable hover responses
+.TP
+\fB\-\-no\-hover\fR
+Disable hover responses
+.TP
+\fB\-\-color\fR
+Always use colored CLI output
+.TP
+\fB\-\-no\-color\fR
+Never use colored CLI output
+.TP
+\fB\-\-print\-config\-schema\fR
+Print the editor initialization options JSON schema
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.SH SUBCOMMANDS
+.TP
+vimdoc\-language\-server\-check(1)
+Check vimdoc files for diagnostics
+.TP
+vimdoc\-language\-server\-format(1)
+Format vimdoc files
+.SH VERSION
+v0.1.2

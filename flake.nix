@@ -36,6 +36,9 @@
           version = "0.0.1";
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
+          postInstall = ''
+            install -Dm644 man/*.1 -t $out/share/man/man1
+          '';
         };
 
         devShells.default = pkgs.mkShell {

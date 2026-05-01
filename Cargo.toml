@@ -23,6 +23,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
+clap_mangen = "0.3.0"
 expect-test = "1"
 tempfile = "3"
 

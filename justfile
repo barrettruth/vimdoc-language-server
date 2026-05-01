@@ -5,7 +5,9 @@ format: rust-format site-format
     @:
 
 lint: rust-lint site-check flake-check
-    @:
+    cargo run --quiet --example generate-man -- man
+    git diff --exit-code -- man
+    test -z "$(git ls-files --others --exclude-standard -- man)" || (git ls-files --others --exclude-standard -- man && exit 1)
 
 test:
     cargo test --all
