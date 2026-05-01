@@ -48,6 +48,25 @@ jobs:
       - name: Publish crate dry run
         run: nix develop .#ci --command cargo publish --dry-run --locked
 
+      - name: Publish crate
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "CARGO_REGISTRY_TOKEN is not configured" >&2
+            exit 1
+          fi
+          crate_version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          published_version=$(
+            nix develop .#ci --command cargo search vimdoc-language-server --limit 1 \
+              | sed -n 's/^vimdoc-language-server = "\([^"]*\)".*/\1/p'
+          )
+          if [ "$published_version" = "$crate_version" ]; then
+            echo "vimdoc-language-server $crate_version is already published"
+          else
+            nix develop .#ci --command cargo publish --locked
+          fi
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
       - name: Configure Forgejo CLI
         run: |
           nix develop .#ci --command tea login delete actions || true
@@ -59,9 +78,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create Forgejo release
+      - name: Replace Forgejo release
         run: |
           asset_name="$(cat dist/asset-name)"
+          nix develop .#ci --command tea releases delete \
+            --login actions \
+            --repo "${{ github.repository }}" \
+            --confirm "$GITHUB_REF_NAME" || true
           nix develop .#ci --command tea releases create \
             --login actions \
             --repo "${{ github.repository }}" \
@@ -70,8 +93,3 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --asset "dist/${asset_name}" \
             --asset "dist/${asset_name}.tar.gz"
-
-      - name: Publish crate
-        run: nix develop .#ci --command cargo publish --locked
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
