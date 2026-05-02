@@ -3,13 +3,17 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: scripts/release.sh <version> [--dry-run]
+Usage: scripts/release.sh <version> [--dry-run|--tag]
 
-Prepares and ships a numbered release from a clean, up-to-date main branch.
+Prepares a numbered release pull request from a clean, up-to-date main branch.
+
+After the release PR is merged, run the script again with --tag to tag the
+merged main commit and trigger the Forgejo release workflow.
 
 Examples:
   just release 0.2.2
   just release 0.2.3 --dry-run
+  just release 0.2.3 --tag
 EOF
 }
 
@@ -32,11 +36,15 @@ if [ -z "$version" ] || [ "$version" = "-h" ] || [ "$version" = "--help" ]; then
 fi
 
 dry_run=false
+tag_only=false
 case "$mode" in
   "")
     ;;
   "--dry-run")
     dry_run=true
+    ;;
+  "--tag")
+    tag_only=true
     ;;
   *)
     die "unknown option: $mode"
@@ -45,6 +53,7 @@ esac
 
 version="${version#v}"
 tag="v${version}"
+release_branch="release/${tag}"
 
 if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
   die "version must look like 1.2.3, got: $version"
@@ -74,12 +83,58 @@ local_head="$(git rev-parse HEAD)"
 remote_head="$(git rev-parse origin/main)"
 [ "$local_head" = "$remote_head" ] || die "main must match origin/main"
 
+crate_name="$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+current_version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+[ -n "$crate_name" ] || die "could not read crate name from Cargo.toml"
+[ -n "$current_version" ] || die "could not read current version from Cargo.toml"
+
+if [ "$tag_only" = true ]; then
+  [ "$version" = "$current_version" ] ||
+    die "Cargo.toml is $current_version; merge the $tag release PR before tagging"
+
+  remote_tag_target="$(git ls-remote --tags origin "refs/tags/${tag}^{}" | awk '{print $1}')"
+  remote_tag_object="$(git ls-remote --tags origin "refs/tags/${tag}" | awk '{print $1}')"
+  if [ -n "$remote_tag_object" ]; then
+    if [ "$remote_tag_target" = "$local_head" ] ||
+      { [ -z "$remote_tag_target" ] && [ "$remote_tag_object" = "$local_head" ]; }; then
+      echo "$tag already exists on origin and points at HEAD."
+      exit 0
+    fi
+    die "remote tag already exists and does not point at HEAD: $tag"
+  fi
+
+  if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+    local_tag_target="$(git rev-parse "${tag}^{}")"
+    [ "$local_tag_target" = "$local_head" ] ||
+      die "local tag $tag points at $local_tag_target, not HEAD $local_head"
+  else
+    run git tag -a "$tag" -m "$tag"
+  fi
+
+  run git push origin "refs/tags/${tag}"
+
+  cat <<EOF
+
+Pushed $tag.
+Forgejo will publish crates.io and replace the release from the tag workflow.
+EOF
+  exit 0
+fi
+
 if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
   die "local tag already exists: $tag"
 fi
 
 if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
   die "remote tag already exists: $tag"
+fi
+
+if git show-ref --verify --quiet "refs/heads/${release_branch}"; then
+  die "local release branch already exists: $release_branch"
+fi
+
+if git ls-remote --exit-code --heads origin "$release_branch" >/dev/null 2>&1; then
+  die "remote release branch already exists: $release_branch"
 fi
 
 if command -v tea >/dev/null 2>&1; then
@@ -91,11 +146,6 @@ if command -v tea >/dev/null 2>&1; then
 else
   die "tea is required to verify Forgejo action secrets"
 fi
-
-crate_name="$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -1)"
-current_version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
-[ -n "$crate_name" ] || die "could not read crate name from Cargo.toml"
-[ -n "$current_version" ] || die "could not read current version from Cargo.toml"
 
 if [ "$version" = "$current_version" ]; then
   die "version is already $version"
@@ -117,6 +167,10 @@ fi
 
 echo "Preparing $crate_name $tag"
 
+if [ "$dry_run" = false ]; then
+  run git switch -c "$release_branch"
+fi
+
 run cargo set-version "$version"
 run sed -i '0,/version = "[^"]*";/s//version = "'"$version"'";/' flake.nix
 run cargo run --quiet --example generate-man -- man
@@ -134,11 +188,30 @@ if [ "$dry_run" = true ]; then
 fi
 
 run git commit -m "chore: release $tag"
-run git tag -a "$tag" -m "$tag"
-run git push --atomic origin HEAD:main "refs/tags/${tag}"
+run git push -u origin "$release_branch"
+
+pr_body="$(cat <<EOF
+## Problem
+
+The next patch release needs the crate, Nix package metadata, and generated manpages bumped from $current_version to $version.
+
+## Solution
+
+Run the release preparation script for $version, including repo CI and \`cargo publish --dry-run --locked --allow-dirty\`, and route the release commit through Forgejo branch protection.
+EOF
+)"
+
+run tea pulls create \
+  --remote origin \
+  --head "$release_branch" \
+  --base main \
+  --title "chore: release $tag" \
+  --description "$pr_body"
 
 cat <<EOF
 
-Pushed $tag.
-Forgejo will publish crates.io and replace the release from the tag workflow.
+Opened a release PR for $tag.
+After that PR is merged, tag the merged main commit with:
+
+  just release $version --tag
 EOF
