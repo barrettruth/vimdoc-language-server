@@ -16,19 +16,19 @@ cargo install vimdoc-language-server
 Run directly:
 
 ```sh
-nix run github:barrettruth/vimdoc-language-server
+nix run git+https://git.barrettruth.com/barrettruth/vimdoc-language-server.git
 ```
 
 Or add to your flake inputs:
 
 ```nix
-inputs.vimdoc-ls.url = "github:barrettruth/vimdoc-language-server";
+inputs.vimdoc-ls.url = "git+https://git.barrettruth.com/barrettruth/vimdoc-language-server.git";
 ```
 
 ## From source
 
 ```sh
-git clone https://github.com/barrettruth/vimdoc-language-server
+git clone https://git.barrettruth.com/barrettruth/vimdoc-language-server.git
 cd vimdoc-language-server
 cargo install --path .
 ```

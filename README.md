@@ -15,13 +15,13 @@ cargo install vimdoc-language-server
 ### Nix
 
 ```sh
-nix run github:barrettruth/vimdoc-language-server
+nix run git+https://git.barrettruth.com/barrettruth/vimdoc-language-server.git
 ```
 
 ### From source
 
 ```sh
-git clone https://github.com/barrettruth/vimdoc-language-server
+git clone https://git.barrettruth.com/barrettruth/vimdoc-language-server.git
 cd vimdoc-language-server
 cargo install --path .
 ```
