@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name "forgejo-actions"
           git config user.email "forgejo-actions@users.noreply.git.barrettruth.com"
-          git tag -f nightly "$GITHUB_SHA"
+          git tag -f --no-sign nightly "$GITHUB_SHA"
           git push origin refs/tags/nightly --force
 
       - name: Configure Forgejo CLI
