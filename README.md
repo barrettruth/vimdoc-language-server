@@ -2,7 +2,7 @@
 
 Language server for vim help files.
 
-https://github.com/user-attachments/assets/99ba05f6-9dbf-4645-8491-cf10af208743
+<video src="https://github.com/user-attachments/assets/99ba05f6-9dbf-4645-8491-cf10af208743" width="100%" controls muted playsinline></video>
 
 ## Installation
 
