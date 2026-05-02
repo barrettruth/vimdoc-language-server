@@ -36,7 +36,7 @@
       {
         packages.default = pkgs.rustPlatform.buildRustPackage {
           pname = "vimdoc-language-server";
-          version = "0.2.1";
+          version = "0.2.2";
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
           postInstall = ''
