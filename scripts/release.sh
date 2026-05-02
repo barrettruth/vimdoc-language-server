@@ -124,7 +124,7 @@ run cargo run --quiet --example generate-man -- man
 run git add Cargo.toml Cargo.lock flake.nix man
 
 run just ci
-run cargo publish --dry-run --locked
+run cargo publish --dry-run --locked --allow-dirty
 
 run git diff --cached --stat
 
