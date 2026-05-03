@@ -3,7 +3,6 @@ name: quality
 on:
   pull_request:
     branches: [main]
-  workflow_call:
 
 jobs:
   format:
