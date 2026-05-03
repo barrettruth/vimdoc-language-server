@@ -16,8 +16,69 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check
-        run: nix develop .#ci --command just ci
+      - name: Wait for quality
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          nix develop .#ci --command node <<'EOF'
+          const required = [
+            "quality / Format (push)",
+            "quality / Lint (push)",
+            "quality / Test (push)",
+          ];
+          const deadline = Date.now() + 60 * 60 * 1000;
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          async function fetchStatuses() {
+            const url = `${process.env.SERVER_URL}/api/v1/repos/${process.env.REPOSITORY}/commits/${process.env.SHA}/status`;
+            const response = await fetch(url, {
+              headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
+            });
+            if (!response.ok) {
+              throw new Error(`status API returned ${response.status}`);
+            }
+            return response.json();
+          }
+
+          async function main() {
+            while (Date.now() < deadline) {
+              const payload = await fetchStatuses();
+              const statuses = new Map();
+              for (const status of payload.statuses ?? []) {
+                if (required.includes(status.context) && !statuses.has(status.context)) {
+                  statuses.set(status.context, status.status);
+                }
+              }
+
+              const missing = required.filter((context) => !statuses.has(context));
+              const failed = required.filter((context) => ["error", "failure"].includes(statuses.get(context)));
+              const pending = required.filter((context) => statuses.get(context) !== "success");
+
+              if (failed.length > 0) {
+                console.error(`Quality checks failed: ${failed.join(", ")}`);
+                process.exit(1);
+              }
+              if (missing.length === 0 && pending.length === 0) {
+                console.log("Quality checks passed.");
+                process.exit(0);
+              }
+
+              console.log(`Waiting for quality checks: ${pending.concat(missing).join(", ")}`);
+              await sleep(10000);
+            }
+
+            console.error("Timed out waiting for quality checks.");
+            process.exit(1);
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          EOF
 
       - name: Build Linux nightly asset
         run: |
