@@ -1,48 +1,87 @@
-name: quality
+name: deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci/experiment-unnamed-reusable-deploy]
   workflow_dispatch:
 
 jobs:
-  format:
-    name: Format
-    runs-on: nix
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Format
-        run: nix develop .#ci --command just format
-  lint:
-    name: Lint
-    runs-on: nix
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Lint
-        run: nix develop .#ci --command just lint
-  test:
-    name: Test
-    runs-on: nix
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test
-        run: nix develop .#ci --command just test
   deploy:
     name: Deploy
     runs-on: nix
-    needs: [format, lint, test]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/experiment-unnamed-reusable-deploy'
     concurrency:
       group: production
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
+      - name: Wait for quality
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          nix develop .#ci --command node <<'EOF'
+          const required = [
+            "quality / Format (push)",
+            "quality / Lint (push)",
+            "quality / Test (push)",
+          ];
+          const deadline = Date.now() + 60 * 60 * 1000;
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          async function fetchStatuses() {
+            const url = `${process.env.SERVER_URL}/api/v1/repos/${process.env.REPOSITORY}/commits/${process.env.SHA}/status`;
+            const response = await fetch(url, {
+              headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
+            });
+            if (!response.ok) {
+              throw new Error(`status API returned ${response.status}`);
+            }
+            return response.json();
+          }
+
+          async function main() {
+            while (Date.now() < deadline) {
+              const payload = await fetchStatuses();
+              const statuses = new Map();
+              for (const status of payload.statuses ?? []) {
+                if (required.includes(status.context) && !statuses.has(status.context)) {
+                  statuses.set(status.context, status.status);
+                }
+              }
+
+              const missing = required.filter((context) => !statuses.has(context));
+              const failed = required.filter((context) => ["error", "failure"].includes(statuses.get(context)));
+              const pending = required.filter((context) => statuses.get(context) !== "success");
+
+              if (failed.length > 0) {
+                console.error(`Quality checks failed: ${failed.join(", ")}`);
+                process.exit(1);
+              }
+              if (missing.length === 0 && pending.length === 0) {
+                console.log("Quality checks passed.");
+                process.exit(0);
+              }
+
+              console.log(`Waiting for quality checks: ${pending.concat(missing).join(", ")}`);
+              await sleep(10000);
+            }
+
+            console.error("Timed out waiting for quality checks.");
+            process.exit(1);
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          EOF
       - name: Build site
         run: nix develop .#ci --command just site-build
       - name: Deploy
+        if: github.ref == 'refs/heads/main'
         env:
           BUILD_DIR: site/dist
           DEPLOY_HOST: git.barrettruth.com
