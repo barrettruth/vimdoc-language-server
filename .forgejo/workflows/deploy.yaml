@@ -2,14 +2,14 @@ name: deploy
 
 on:
   push:
-    branches: [main, ci/experiment-unnamed-reusable-deploy]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy
     runs-on: nix
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/experiment-unnamed-reusable-deploy'
+    if: github.ref == 'refs/heads/main'
     concurrency:
       group: production
       cancel-in-progress: true
