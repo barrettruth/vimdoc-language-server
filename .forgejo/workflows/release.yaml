@@ -27,7 +27,7 @@ jobs:
           fi
 
       - name: Wait for quality
-        run: nix develop .#ci --command node .forgejo/scripts/wait-for-quality.js
+        run: nix shell nixpkgs#curl nixpkgs#jq -c bash .forgejo/scripts/wait-for-quality.sh
 
       - name: Build Linux release asset
         run: |
