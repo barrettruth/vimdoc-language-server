@@ -2,6 +2,11 @@
 
 Language server for vim help files.
 
+> [!NOTE]
+> Due to GitHub's historic unreliability, development, issues, and pull requests
+> have moved to
+> [Forgejo](https://git.barrettruth.com/barrettruth/vimdoc-language-server).
+
 <video src="https://github.com/user-attachments/assets/99ba05f6-9dbf-4645-8491-cf10af208743" width="100%" controls muted playsinline></video>
 
 ## Installation
