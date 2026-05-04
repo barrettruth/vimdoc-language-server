@@ -13,68 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Wait for quality
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SERVER_URL: ${{ github.server_url }}
-          REPOSITORY: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-        run: |
-          nix develop .#ci --command node <<'EOF'
-          const required = [
-            "quality / Format (push)",
-            "quality / Lint (push)",
-            "quality / Test (push)",
-          ];
-          const deadline = Date.now() + 60 * 60 * 1000;
-          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-          async function fetchStatuses() {
-            const url = `${process.env.SERVER_URL}/api/v1/repos/${process.env.REPOSITORY}/commits/${process.env.SHA}/status`;
-            const response = await fetch(url, {
-              headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
-            });
-            if (!response.ok) {
-              throw new Error(`status API returned ${response.status}`);
-            }
-            return response.json();
-          }
-
-          async function main() {
-            while (Date.now() < deadline) {
-              const payload = await fetchStatuses();
-              const statuses = new Map();
-              for (const status of payload.statuses ?? []) {
-                if (required.includes(status.context) && !statuses.has(status.context)) {
-                  statuses.set(status.context, status.status);
-                }
-              }
-
-              const missing = required.filter((context) => !statuses.has(context));
-              const failed = required.filter((context) => ["error", "failure"].includes(statuses.get(context)));
-              const pending = required.filter((context) => statuses.get(context) !== "success");
-
-              if (failed.length > 0) {
-                console.error(`Quality checks failed: ${failed.join(", ")}`);
-                process.exit(1);
-              }
-              if (missing.length === 0 && pending.length === 0) {
-                console.log("Quality checks passed.");
-                process.exit(0);
-              }
-
-              console.log(`Waiting for quality checks: ${pending.concat(missing).join(", ")}`);
-              await sleep(10000);
-            }
-
-            console.error("Timed out waiting for quality checks.");
-            process.exit(1);
-          }
-
-          main().catch((error) => {
-            console.error(error);
-            process.exit(1);
-          });
-          EOF
+        run: nix develop .#ci --command node .forgejo/scripts/wait-for-quality.js
       - name: Build site
         run: nix develop .#ci --command just site-build
       - name: Deploy
@@ -96,7 +35,7 @@ jobs:
           nix develop .#ci --command bash -lc '
             set -eu
             ssh-keyscan -H "$DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
-            release="$DEPLOY_ROOT/releases/$GITHUB_SHA"
+            release="$DEPLOY_ROOT/releases/$FORGEJO_SHA"
             ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$release\""
             rsync -az --delete -e "ssh -i $HOME/.ssh/vps_web_deploy" "$BUILD_DIR"/ "$DEPLOY_USER@$DEPLOY_HOST:$release/"
             ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "ln -sfn \"$release\" \"$DEPLOY_ROOT/current.next\" && mv -Tf \"$DEPLOY_ROOT/current.next\" \"$DEPLOY_ROOT/current\""
