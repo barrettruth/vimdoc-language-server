@@ -24,6 +24,7 @@ const sha = process.env.FORGEJO_SHA;
 const token = process.env.FORGEJO_TOKEN;
 const deadline = Date.now() + 60 * 60 * 1000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+let lastWaitingKey = "";
 
 async function fetchStatuses() {
 	const url = `${apiUrl}/repos/${repository}/commits/${sha}/status`;
@@ -50,7 +51,7 @@ async function main() {
 		const failed = required.filter((context) =>
 			["error", "failure"].includes(statuses.get(context)),
 		);
-		const pending = required.filter(
+		const waiting = required.filter(
 			(context) => statuses.get(context) !== "success",
 		);
 
@@ -58,14 +59,16 @@ async function main() {
 			console.error(`Quality checks failed: ${failed.join(", ")}`);
 			process.exit(1);
 		}
-		if (missing.length === 0 && pending.length === 0) {
+		if (missing.length === 0 && waiting.length === 0) {
 			console.log("Quality checks passed.");
 			process.exit(0);
 		}
 
-		console.log(
-			`Waiting for quality checks: ${pending.concat(missing).join(", ")}`,
-		);
+		const waitingKey = waiting.join("\n");
+		if (waitingKey !== lastWaitingKey) {
+			console.log(`Waiting for quality checks: ${waiting.join(", ")}`);
+			lastWaitingKey = waitingKey;
+		}
 		await sleep(10000);
 	}
 
