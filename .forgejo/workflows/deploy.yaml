@@ -1,15 +1,12 @@
 name: deploy
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy:
     name: Deploy
     runs-on: nix
-    if: github.ref == 'refs/heads/main'
     concurrency:
       group: production
       cancel-in-progress: true
@@ -81,7 +78,6 @@ jobs:
       - name: Build site
         run: nix develop .#ci --command just site-build
       - name: Deploy
-        if: github.ref == 'refs/heads/main'
         env:
           BUILD_DIR: site/dist
           DEPLOY_HOST: git.barrettruth.com
