@@ -1,4 +1,4 @@
-name: deploy
+name: nightly
 
 on:
   push:
