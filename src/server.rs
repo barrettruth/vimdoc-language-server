@@ -261,12 +261,20 @@ pub fn load_tag_path(tag_index: &mut TagIndex, path: &Path) {
         let tags_file = path.join("tags");
         if tags_file.exists() {
             if let Err(e) = tag_index.load_tags_file(&tags_file) {
-                tracing::warn!(path = %tags_file.display(), error = %e, "failed to load tags file");
+                tracing::warn!(
+                    path = %tags_file.display(),
+                    error = %e,
+                    "[vimdoc-language-server]: failed to load tags file"
+                );
             }
         }
     } else if path.exists() {
         if let Err(e) = tag_index.load_tags_file(path) {
-            tracing::warn!(path = %path.display(), error = %e, "failed to load tags file");
+            tracing::warn!(
+                path = %path.display(),
+                error = %e,
+                "[vimdoc-language-server]: failed to load tags file"
+            );
         }
     }
 }

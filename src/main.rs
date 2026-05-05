@@ -429,7 +429,7 @@ fn main() -> Result<()> {
 
     if let Some(ref root) = workspace_root {
         if let Err(e) = tag_index.scan_workspace(root) {
-            tracing::warn!(error = %e, "failed to scan workspace");
+            tracing::warn!(error = %e, "[vimdoc-language-server]: failed to scan workspace");
         }
     }
 
@@ -440,10 +440,12 @@ fn main() -> Result<()> {
     if config.runtime_tags {
         if let Some(runtime_path) = tags::discover_vimruntime() {
             if let Err(e) = tag_index.load_runtime_tags(&runtime_path) {
-                tracing::warn!(error = %e, "failed to load runtime tags");
+                tracing::warn!(error = %e, "[vimdoc-language-server]: failed to load runtime tags");
             }
         } else {
-            tracing::warn!("could not discover $VIMRUNTIME, runtime tags not loaded");
+            tracing::warn!(
+                "[vimdoc-language-server]: could not discover $VIMRUNTIME, runtime tags not loaded"
+            );
         }
     }
 
@@ -454,7 +456,7 @@ fn main() -> Result<()> {
         normalize_spacing = config.normalize_spacing,
         diagnostics = config.diagnostics,
         hover = config.hover,
-        "server initialized"
+        "[vimdoc-language-server]: server initialized"
     );
 
     server::main_loop(&connection, &config, &mut tag_index)?;
