@@ -3,9 +3,9 @@
 Language server for vim help files.
 
 > [!NOTE]
-> Due to GitHub's historic unreliability, development, issues, and pull requests
-> have moved to
+> Due to GitHub's historic unreliability, active development is hosted on
 > [Forgejo](https://git.barrettruth.com/barrettruth/vimdoc-language-server).
+> GitHub is maintained as a read-only mirror.
 
 <video src="https://github.com/user-attachments/assets/99ba05f6-9dbf-4645-8491-cf10af208743" width="100%" controls muted playsinline></video>
 
