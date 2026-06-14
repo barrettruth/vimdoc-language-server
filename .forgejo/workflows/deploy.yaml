@@ -19,7 +19,7 @@ jobs:
       - name: Deploy
         env:
           BUILD_DIR: site/dist
-          DEPLOY_HOST: git.barrettruth.com
+          DEPLOY_HOST: 127.0.0.1
           DEPLOY_ROOT: /srv/www/vimdoc-language-server.com
           DEPLOY_USER: web-deploy
           VPS_WEB_DEPLOY_KEY: ${{ secrets.VPS_WEB_DEPLOY_KEY }}
