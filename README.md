@@ -77,28 +77,6 @@ vimdoc-language-server check --ignore unresolved-tag doc/
 - [x] **Folding** — sections (between separators) and code blocks
 - [x] **Code actions** — quick fixes and refactors
 
-## Release
-
-Numbered releases are explicit maintainer actions from a clean, up-to-date
-`main` branch. First, prepare the release PR:
-
-```sh
-just release 0.2.3
-```
-
-The command bumps Cargo and Nix package metadata, regenerates manpages, runs CI,
-checks `cargo publish --dry-run`, commits the release on a `release/v*` branch,
-pushes that branch, and opens a Forgejo PR. After the PR merges, tag the merged
-`main` commit:
-
-```sh
-just release 0.2.3 --tag
-```
-
-Forgejo publishes crates.io and replaces the release assets from the tag
-workflow. Use `just release 0.2.3 --dry-run` to run the release checks without
-keeping a commit, branch, tag, or push.
-
 ## Acknowledgements
 
 - [@skewb1k](https://github.com/skewb1k) - pull diagnostics deduplication fix
