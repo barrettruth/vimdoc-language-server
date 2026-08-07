@@ -4,7 +4,7 @@ Language server for vim help files.
 
 > [!NOTE]
 > Due to GitHub's historic unreliability, active development is hosted on
-> [Forgejo](https://git.barrettruth.com/barrettruth/vimdoc-language-server).
+> [Forgejo](https://forge.barrettruth.com/barrettruth/vimdoc-language-server).
 > GitHub is maintained as a read-only mirror.
 
 <video src="https://github.com/user-attachments/assets/99ba05f6-9dbf-4645-8491-cf10af208743" width="100%" controls muted playsinline></video>
@@ -20,13 +20,13 @@ cargo install vimdoc-language-server
 ### Nix
 
 ```sh
-nix run git+https://git.barrettruth.com/barrettruth/vimdoc-language-server.git
+nix run git+https://forge.barrettruth.com/barrettruth/vimdoc-language-server.git
 ```
 
 ### From source
 
 ```sh
-git clone https://git.barrettruth.com/barrettruth/vimdoc-language-server.git
+git clone https://forge.barrettruth.com/barrettruth/vimdoc-language-server.git
 cd vimdoc-language-server
 cargo install --path .
 ```
