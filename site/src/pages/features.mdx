@@ -50,12 +50,12 @@ then workspace, then external tags files. Works cross-file.
 Tag name completion triggered by typing `|`. Shows all known tags from the
 workspace and external tag files. Inserts the closing `|` automatically.
 
-Only triggers when the cursor is inside `|...|` — typing `|` in other
-contexts (e.g. inside code blocks) does not produce completions.
+Only triggers when the cursor is inside `|...|`, not in code blocks or other
+contexts.
 
 ## Hover
 
-Shows the context surrounding a tag definition — the lines around the `*tag*`,
+Shows the context surrounding a tag definition: the lines around the `*tag*`,
 stopping at separators or blank lines. Rendered as a `vim` code fence.
 
 ## References
@@ -96,17 +96,17 @@ full-document formatting, applied to the selected lines.
 
 ## Code actions
 
-- **Format this block** — applies the formatter to the block under the cursor.
+- **Format this block**: applies the formatter to the block under the cursor.
   Offered on prose, headings, list items, and separators when formatting would
   produce a change.
-- **Convert to minor separator** — replaces `===` with `---`. Offered on major
+- **Convert to minor separator**: replaces `===` with `---`. Offered on major
   separator lines.
-- **Convert to major separator** — replaces `---` with `===`. Offered on minor
+- **Convert to major separator**: replaces `---` with `===`. Offered on minor
   separator lines.
-- **Remove taglink delimiters** — strips `|...|` to leave the bare name.
+- **Remove taglink delimiters**: strips `|...|` to leave the bare name.
   Offered when the cursor is on a `|taglink|`.
-- **Add taglink** — wraps a bare word in `|...|`. Offered when the word under
+- **Add taglink**: wraps a bare word in `|...|`. Offered when the word under
   the cursor matches a known tag in the workspace or external tag files.
-- **Generate table of contents** — builds a dot-filled TOC from tagged headings
+- **Generate table of contents**: builds a dot-filled TOC from tagged headings
   and inserts it before the first major separator. Offered when the file has
   two or more tagged headings and no existing `*...-contents*` tag.

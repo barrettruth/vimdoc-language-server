@@ -8,7 +8,7 @@ title: FAQ
 ## Why do I get false-positive unresolved-tag warnings?
 
 The server scans `|...|` patterns as taglinks. Some vimdoc content uses pipes
-in non-taglink contexts — Lua type unions (`string|nil`), regex alternation
+in non-taglink contexts: Lua type unions (`string|nil`), regex alternation
 (`\|`), or option string values. These can produce spurious `unresolved-tag`
 warnings.
 

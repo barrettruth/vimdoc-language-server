@@ -89,8 +89,8 @@ preserved. Separator normalization and heading alignment still apply.
 
 ## Spacing
 
-Interior whitespace within a line is preserved by default. Double spaces after
-periods, multi-space alignment — these are kept.
+Interior whitespace within a line is preserved by default: double spaces after
+periods, multi-space alignment.
 
 With `--normalize-spacing` or `normalizeSpacing: true`, multiple consecutive
 spaces are collapsed to a single space during reflow.
@@ -100,23 +100,22 @@ regardless of the `normalizeSpacing` setting.
 
 ## What it preserves
 
-- **Code blocks** (`>` to `<`) — exact whitespace preserved
-- **List items** (`-`, `*`, `1.`) — not reflowed, not merged with adjacent prose
-- **Indented lines** — any line starting with spaces or tabs is left as-is
-- **Tab-containing lines** — command references like `CTRL-V\t\tDescription` are
+- **Code blocks** (`>` to `<`): exact whitespace preserved
+- **List items** (`-`, `*`, `1.`): not reflowed, not merged with adjacent prose
+- **Indented lines**: any line starting with spaces or tabs is left as-is
+- **Tab-containing lines**: command references like `CTRL-V\t\tDescription` are
   preserved and not merged with adjacent prose
-- **Pipe tables** — lines that start and end with `|` are preserved verbatim,
+- **Pipe tables**: lines that start and end with `|` are preserved verbatim,
   covering both padded (`| cell | cell |`) and tight (`|cell|cell|`) GFM-style
   tables
-- **Blank lines** — structure-preserving
+- **Blank lines**: structure-preserving
 
 ## Limitations
 
 - List item _continuation_ lines may be merged into prose if they are
   not indented
 - CJK double-width characters are counted as single-width for alignment
-  and reflow decisions — theoretical for vimdoc, where CJK does not appear
-  in headings or prose
+  and reflow decisions
 - Indented lines are treated as verbatim and never reflowed or truncated.
   If an indented line exceeds `line_width` (e.g. a TOC entry with a long
   title, or a command reference with a wide description), it is left as-is

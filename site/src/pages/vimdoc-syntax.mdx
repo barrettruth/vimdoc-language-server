@@ -7,8 +7,7 @@ toc: true
 # Vimdoc syntax
 
 The subset of vimdoc syntax that the language server recognizes and operates
-on. Vimdoc has no formal specification — this reference describes the
-conventions observed across Vim and Neovim runtime documentation.
+on.
 
 ## Tags (`*tag*`)
 
@@ -73,7 +72,7 @@ preserves code blocks exactly as written.
 
 ## Section separators
 
-### h1 — major separator (`=`)
+### h1: major separator (`=`)
 
 At least 6 `=` characters. Conventionally spans the full line width.
 Followed by a heading line with right-aligned tags.
@@ -83,7 +82,7 @@ Followed by a heading line with right-aligned tags.
 INTRODUCTION                                              *plugin-intro*
 ```
 
-### h2 — minor separator (`-`)
+### h2: minor separator (`-`)
 
 Same rules, with `-` characters.
 
@@ -97,7 +96,7 @@ Folding ranges span from one separator to the next.
 
 ## Headings
 
-### h3 — UPPERCASE heading
+### h3: UPPERCASE heading
 
 An all-caps line, optionally with right-aligned tags. Not preceded by a
 separator.
