@@ -6,12 +6,9 @@ toc: true
 
 # Grammar Reference
 
-This page describes the vimdoc constructs that vimdoc-ls recognizes.
-
 ## Separators
 
-A line consisting entirely of `=` or `-` characters, with a minimum length of
-10, is a separator.
+A line of 10 or more `=` or `-` characters.
 
 | Kind  | Character | Minimum length | `LineKind`                  |
 | ----- | --------- | -------------- | --------------------------- |
@@ -23,15 +20,13 @@ A line consisting entirely of `=` or `-` characters, with a minimum length of
 --------------------------------------------------------------------------------
 ```
 
-The formatter normalizes separators to `line_width` characters (default: 78).
+The formatter normalizes separators to `line_width` (default 78).
 
 ## Tags
 
-A tag is a named anchor — the target of navigation and cross-references.
-
 **Pattern:** `*name*`
 
-- `name` must be non-empty and contain no whitespace or tab characters.
+- `name` is non-empty and contains no whitespace or tabs.
 - Multiple tags may appear on one line.
 - Tags are conventionally right-aligned to `line_width`.
 
@@ -41,13 +36,11 @@ A tag is a named anchor — the target of navigation and cross-references.
 
 ## Taglinks
 
-A taglink is a reference to a tag.
-
 **Pattern:** `|name|`
 
-- `name` must be non-empty and contain no whitespace.
-- The opening `|` must appear at a word boundary: line start, or immediately
-  preceded by a space, tab, `(`, `[`, or `|`.
+- `name` is non-empty and contains no whitespace.
+- The opening `|` must fall at a word boundary: line start, or preceded by a
+  space, tab, `(`, `[`, or `|`.
 - Taglinks inside backtick spans are not scanned.
 
 ```
@@ -56,12 +49,11 @@ See |my-plugin| for details.
 
 ## Code Blocks
 
-Code block content is treated as verbatim — no tag scanning, no reformatting.
+Content is verbatim: no tag scanning, no reformatting.
 
 ### Inline fence
 
-A prose line whose trimmed content ends with `>` (but not `->`) opens a code
-block. The `>` may appear anywhere on the line.
+A prose line whose trimmed content ends with `>`, but not `->`.
 
 ```
 The following example: >
@@ -71,8 +63,8 @@ The following example: >
 
 ### Named fence
 
-A line whose entire trimmed content matches `>lang` — where `lang` is one or
-more characters from `[A-Za-z0-9_+-]` — opens a named code block.
+A line whose trimmed content matches `>lang`, where `lang` is one or more
+characters from `[A-Za-z0-9_+-]`.
 
 ```
 >lua
@@ -80,23 +72,18 @@ more characters from `[A-Za-z0-9_+-]` — opens a named code block.
 <
 ```
 
-Named fences support identifiers such as `>lua`, `>vim`, `>python`, `>c`,
-`>c++`, `>lua54`, and `>objective-c`.
-
 ### Termination
 
-A code block ends at the first of:
+A block ends at the first of:
 
-1. A `<` character alone on a line.
-2. Any non-blank line that begins at column 0 (unindented).
+1. A `<` alone on a line.
+2. A non-blank line beginning at column 0.
 
-Blank lines within a code block do not end it — the block continues if the
-next non-blank line is indented.
+Blank lines do not terminate a block.
 
 ## List Items
 
-Lines recognized as list items are preserved as-is and not reflowed together
-with adjacent prose.
+List items are preserved as-is and never reflowed with adjacent prose.
 
 | Prefix | Kind                              |
 | ------ | --------------------------------- |
@@ -105,26 +92,19 @@ with adjacent prose.
 | `• `   | Unordered (Unicode bullet U+2022) |
 | `N. `  | Ordered (N = one or more digits)  |
 
-**Disambiguation rules:**
-
-- `* text` is a list item only if the line contains no tag definition. A line
-  like `*my-tag* Introduction` is `Text`, not a list item.
-- `N. text` is a list item only if the line contains no tag definition. A line
-  like `1. Introduction		*intro*` is `Text`.
+`* ` and `N. ` are list items only where the line defines no tag, so
+`*my-tag* Introduction` and `1. Introduction		*intro*` are `Text`.
 
 ## Backtick Spans
 
-Content between backticks is skipped during tag scanning.
-
 **Pattern:** `` `content` ``
 
-A `|pipe|` pattern inside a backtick span is not recognized as a taglink.
+Content between backticks is skipped during tag scanning.
 
 ## Pipe Tables
 
-Lines that start and end with `|` (after trimming trailing whitespace) are
-recognized as pipe table rows and preserved verbatim by the formatter. This
-covers both padded and tight GFM-style markdown tables.
+Lines that start and end with `|`, after trailing whitespace is trimmed, are
+preserved verbatim.
 
 ```
 | Command  | List           |
@@ -138,11 +118,9 @@ covers both padded and tight GFM-style markdown tables.
 |`no prefix`|Files          |
 ```
 
-Pipe table rows are not reflowed, not merged with adjacent prose, and not
-treated as taglinks. Traditional vimdoc tables that use tab-aligned columns
-with `~` headers are already preserved by the tab-containing-line rule.
+Rows are never reflowed, merged with prose, or read as taglinks. Tab-aligned
+tables with `~` headers are preserved by the tab rule.
 
 ## Blank Lines
 
-An empty line or a line containing only whitespace is classified as `Blank`.
-Blank lines do not terminate code blocks.
+An empty or whitespace-only line is `Blank`.
