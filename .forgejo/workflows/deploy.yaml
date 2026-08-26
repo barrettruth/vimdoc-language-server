@@ -19,7 +19,7 @@ jobs:
       - name: Deploy
         env:
           BUILD_DIR: site/dist
-          DEPLOY_HOST: 127.0.0.1
+          DEPLOY_HOST: 152.53.168.144
           DEPLOY_ROOT: /srv/www/vimdoc-language-server.com
           DEPLOY_USER: web-deploy
           VPS_WEB_DEPLOY_KEY: ${{ secrets.VPS_WEB_DEPLOY_KEY }}
@@ -35,9 +35,10 @@ jobs:
           nix develop .#ci --command bash -lc '
             set -eu
             ssh-keyscan -H "$DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
+            ssh() { command ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "$@"; }
             release="$DEPLOY_ROOT/releases/$FORGEJO_SHA"
-            ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p \"$release\""
-            rsync -az --delete -e "ssh -i $HOME/.ssh/vps_web_deploy" "$BUILD_DIR"/ "$DEPLOY_USER@$DEPLOY_HOST:$release/"
-            ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "ln -sfn \"$release\" \"$DEPLOY_ROOT/current.next\" && mv -Tf \"$DEPLOY_ROOT/current.next\" \"$DEPLOY_ROOT/current\""
-            ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "cd \"$DEPLOY_ROOT/releases\" && ls -1dt -- */ 2>/dev/null | tail -n +11 | xargs -r rm -rf --"
+            ssh "rm -rf \"$release\" && mkdir -p \"$release\""
+            tar -C "$BUILD_DIR" -czf - . | ssh "tar -C \"$release\" -xzf -"
+            ssh "ln -sfn \"$release\" \"$DEPLOY_ROOT/current.next\" && mv -Tf \"$DEPLOY_ROOT/current.next\" \"$DEPLOY_ROOT/current\""
+            ssh "cd \"$DEPLOY_ROOT/releases\" && ls -1dt -- */ 2>/dev/null | tail -n +11 | xargs -r rm -rf --"
           '
