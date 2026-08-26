@@ -8,7 +8,7 @@ CLAUDE.md
 .envrc
 .direnv/
 result
-reuslt-*
+result-*
 
 site/node_modules/
 site/dist/
