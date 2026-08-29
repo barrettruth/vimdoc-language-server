@@ -24,6 +24,7 @@
         commonBuildInputs = [
           pkgs.cargo-edit
           pkgs.cargo-watch
+          pkgs.mdx-language-server
           pkgs.nodejs_22
           pkgs.openssh
           pkgs.pnpm
@@ -31,6 +32,7 @@
           pkgs.tea
           pkgs.just
           pkgs.rsync
+          pkgs.vtsls
         ];
       in
       {
