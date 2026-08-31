@@ -1,0 +1,43 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    concurrency:
+      group: production
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Build site
+        run: nix develop .#ci --command just site-build
+      - name: Deploy
+        env:
+          BUILD_DIR: site/dist
+          DEPLOY_HOST: 152.53.168.144
+          DEPLOY_ROOT: /srv/www/vimdoc-language-server.com
+          DEPLOY_USER: web-deploy
+          VPS_WEB_DEPLOY_KEY: ${{ secrets.VPS_WEB_DEPLOY_KEY }}
+        run: |
+          set -eu
+          if [ -z "${VPS_WEB_DEPLOY_KEY:-}" ]; then
+            echo "VPS_WEB_DEPLOY_KEY is not set" >&2
+            exit 1
+          fi
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$VPS_WEB_DEPLOY_KEY" > "$HOME/.ssh/vps_web_deploy"
+          chmod 600 "$HOME/.ssh/vps_web_deploy"
+          nix develop .#ci --command bash -lc '
+            set -eu
+            ssh-keyscan -H "$DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
+            ssh() { command ssh -i "$HOME/.ssh/vps_web_deploy" "$DEPLOY_USER@$DEPLOY_HOST" "$@"; }
+            release="$DEPLOY_ROOT/releases/$GITHUB_SHA"
+            ssh "rm -rf \"$release\" && mkdir -p \"$release\""
+            tar -C "$BUILD_DIR" -czf - . | ssh "tar -C \"$release\" -xzf -"
+            ssh "ln -sfn \"$release\" \"$DEPLOY_ROOT/current.next\" && mv -Tf \"$DEPLOY_ROOT/current.next\" \"$DEPLOY_ROOT/current\""
+            ssh "cd \"$DEPLOY_ROOT/releases\" && ls -1dt -- */ 2>/dev/null | tail -n +11 | xargs -r rm -rf --"
+          '
